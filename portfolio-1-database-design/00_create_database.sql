@@ -1,0 +1,1 @@
+CREATE DATABASE carbon_db;
