@@ -29,10 +29,10 @@ This repository hosts the practical virtual lab submissions and continuous asses
 ## 🚀 Quick Links
 
 - [Portfolio 1 Detailed Documentation & Architecture](file:///c:/Users/FEMI%20EMMANUEL/Documents/MIT%208103%20Project/MIT-8103---Advanced-Database-Test/portfolio-1-database-design/README.md)
-- [Portfolio 1 Normalisation & 3NF Trade-off Report](file:///c:/Users/FEMI%20EMMANUEL/Documents/MIT%208103%20Project/MIT-8103---Advanced-Database-Test/portfolio-1-database-design/normalisation.md)
-- [Portfolio 1 Interactive DBML Schema](file:///c:/Users/FEMI%20EMMANUEL/Documents/MIT%208103%20Project/MIT-8103---Advanced-Database-Test/portfolio-1-database-design/carbon.dbml)
-- [Portfolio 1 DDL Schema Definition](file:///c:/Users/FEMI%20EMMANUEL/Documents/MIT%208103%20Project/MIT-8103---Advanced-Database-Test/portfolio-1-database-design/02_create_tables.sql)
-- [Portfolio 1 Constraint Validation Tests](file:///c:/Users/FEMI%20EMMANUEL/Documents/MIT%208103%20Project/MIT-8103---Advanced-Database-Test/portfolio-1-database-design/03_constraint_tests.sql)
-- [Portfolio 1 Production Seed Data Generator](file:///c:/Users/FEMI%20EMMANUEL/Documents/MIT%208103%20Project/MIT-8103---Advanced-Database-Test/portfolio-1-database-design/04_seed_data.sql)
+- [Portfolio 1 Normalisation & 3NF Trade-off Report](file:///c:/Users/FEMI%20EMMANUEL/Documents/MIT%208103%20Project/MIT-8103---Advanced-Database-Test/portfolio-1-database-design/Oluwarotimi_Oluwafemi_301930838_Normalisation.md)
+- [Portfolio 1 Interactive DBML Schema](file:///c:/Users/FEMI%20EMMANUEL/Documents/MIT%208103%20Project/MIT-8103---Advanced-Database-Test/portfolio-1-database-design/Oluwarotimi_Oluwafemi_301930838_CarbonDBML.dbml)
+- [Portfolio 1 DDL Schema Definition](file:///c:/Users/FEMI%20EMMANUEL/Documents/MIT%208103%20Project/MIT-8103---Advanced-Database-Test/portfolio-1-database-design/Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql)
+- [Portfolio 1 Constraint Validation Tests](file:///c:/Users/FEMI%20EMMANUEL/Documents/MIT%208103%20Project/MIT-8103---Advanced-Database-Test/portfolio-1-database-design/Oluwarotimi_Oluwafemi_301930838_03_ConstraintTests.sql)
+- [Portfolio 1 Production Seed Data Generator](file:///c:/Users/FEMI%20EMMANUEL/Documents/MIT%208103%20Project/MIT-8103---Advanced-Database-Test/portfolio-1-database-design/Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql)
 
 

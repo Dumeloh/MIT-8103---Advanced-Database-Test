@@ -120,11 +120,11 @@ erDiagram
 
 ### 2.2 Visual Schema Architecture (DBML & Graphical ERD)
 
-In addition to standard ANSI SQL DDL, the complete relational schema is authored in **Database Markup Language (DBML)** in [`carbon.dbml`](./carbon.dbml). This provides an interactive, tool-agnostic data definition that can be rendered directly in web visualization tools like [dbdiagram.io](https://dbdiagram.io) and [dbdocs.io](https://dbdocs.io).
+In addition to standard ANSI SQL DDL, the complete relational schema is authored in **Database Markup Language (DBML)** in [`Oluwarotimi_Oluwafemi_301930838_CarbonDBML.dbml`](./Oluwarotimi_Oluwafemi_301930838_CarbonDBML.dbml). This provides an interactive, tool-agnostic data definition that can be rendered directly in web visualization tools like [dbdiagram.io](https://dbdiagram.io) and [dbdocs.io](https://dbdocs.io).
 
-![Carbon DB Entity-Relationship Diagram](screenshots/er%20diagram.png)
+![Carbon DB Entity-Relationship Diagram](screenshots/Oluwarotimi_Oluwafemi_301930838_ERDiagram.png)
 
-*Figure 1: Complete Relational Entity-Relationship Diagram generated via dbdiagram.io from `carbon.dbml`.*
+*Figure 1: Complete Relational Entity-Relationship Diagram generated via dbdiagram.io from `Oluwarotimi_Oluwafemi_301930838_CarbonDBML.dbml`.*
 
 ---
 
@@ -216,7 +216,7 @@ Risk engine scoring and Anti-Money Laundering (AML) audit log.
 The schema strictly satisfies normal form criteria up to **Boyce-Codd Normal Form (BCNF)** across all supporting relations (`customers`, `kyc_records`, `cards`, `fraud_flags`). However, in core financial relations, **the design deliberately breaks Third Normal Form (3NF) in four specific locations** to satisfy real-world low-latency OLTP requirements, $O(1)$ overdraft prevention, and immutable point-in-time auditing.
 
 > [!NOTE]
-> For a rigorous mathematical and architectural breakdown of these deliberate trade-offs, refer to the dedicated **[Normalisation Report (normalisation.md)](./normalisation.md)**.
+> For a rigorous mathematical and architectural breakdown of these deliberate trade-offs, refer to the dedicated **[Normalisation Report (Oluwarotimi_Oluwafemi_301930838_Normalisation.md)](./Oluwarotimi_Oluwafemi_301930838_Normalisation.md)**.
 
 | Normal Form | Formal Requirement | Schema Implementation & Justification |
 | :--- | :--- | :--- |
@@ -246,7 +246,7 @@ The schema strictly satisfies normal form criteria up to **Boyce-Codd Normal For
 
 ---
 
-## 6. Automated Constraint Testing Suite (`03_constraint_tests.sql`)
+## 6. Automated Constraint Testing Suite (`Oluwarotimi_Oluwafemi_301930838_03_ConstraintTests.sql`)
 
 The repository includes a comprehensive negative-testing test harness executed in PL/pgSQL using anonymous code blocks (`DO $$ ... BEGIN ... EXCEPTION ... END $$;`). Each test attempts an illegal operation and verifies that the database raises the appropriate integrity exception.
 
@@ -279,9 +279,9 @@ END $$;
 
 ---
 
-## 7. High-Volume Synthetic Data Generation (`04_seed_data.sql`)
+## 7. High-Volume Synthetic Data Generation (`Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql`)
 
-To evaluate schema behavior under realistic production volumes and prepare baseline datasets for query optimization (Portfolio 2) and concurrency tests (Portfolio 3), [`04_seed_data.sql`](./04_seed_data.sql) executes a deterministic, high-volume synthetic simulation directly within PostgreSQL.
+To evaluate schema behavior under realistic production volumes and prepare baseline datasets for query optimization (Portfolio 2) and concurrency tests (Portfolio 3), [`Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql`](./Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql) executes a deterministic, high-volume synthetic simulation directly within PostgreSQL.
 
 ### 7.1 Architecture of the Seed Engine
 
@@ -329,15 +329,15 @@ The seed script constructs a complete digital banking ecosystem in a single tran
 portfolio-1-database-design/
 │
 ├── README.md                 # Complete system documentation, ERD, and lab report
-├── normalisation.md          # In-depth normalisation & deliberate 3NF trade-off report
-├── carbon.dbml               # Database Markup Language (DBML) interactive schema definition
-├── 00_create_database.sql    # DDL script creating target database (carbon_db)
-├── 01_verify_setup.sql       # Verification script checking PostgreSQL engine version and connection
-├── 02_create_tables.sql      # Core DDL defining all 8 normalized tables and relational constraints
-├── 03_constraint_tests.sql   # Automated negative-testing validation suite (10 test cases)
-├── 04_seed_data.sql          # Production-scale synthetic data generator (5,000 customers, 200k+ txns)
+├── Oluwarotimi_Oluwafemi_301930838_Normalisation.md          # In-depth normalisation & deliberate 3NF trade-off report
+├── Oluwarotimi_Oluwafemi_301930838_CarbonDBML.dbml               # Database Markup Language (DBML) interactive schema definition
+├── Oluwarotimi_Oluwafemi_301930838_00_CreateDatabase.sql    # DDL script creating target database (carbon_db)
+├── Oluwarotimi_Oluwafemi_301930838_01_VerifySetup.sql       # Verification script checking PostgreSQL engine version and connection
+├── Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql      # Core DDL defining all 8 normalized tables and relational constraints
+├── Oluwarotimi_Oluwafemi_301930838_03_ConstraintTests.sql   # Automated negative-testing validation suite (10 test cases)
+├── Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql          # Production-scale synthetic data generator (5,000 customers, 200k+ txns)
 └── screenshots/              # Visual proof of pgAdmin 4 deployment and query execution
-    └── Screenshot 2026-10-20 000035.png  # pgAdmin 4 PostgreSQL 18 connection dashboard
+    └── Oluwarotimi_Oluwafemi_301930838_Screenshot06.png  # pgAdmin 4 PostgreSQL 18 connection dashboard
 ```
 
 ---
@@ -351,35 +351,35 @@ portfolio-1-database-design/
 ### Step-by-Step Instructions
 
 1. **Initialize the Database:**
-   Connect to PostgreSQL and execute [`00_create_database.sql`](./00_create_database.sql):
+   Connect to PostgreSQL and execute [`Oluwarotimi_Oluwafemi_301930838_00_CreateDatabase.sql`](./Oluwarotimi_Oluwafemi_301930838_00_CreateDatabase.sql):
    ```sql
    CREATE DATABASE carbon_db;
    ```
 
 2. **Verify Environment Connection:**
-   Connect to `carbon_db` and execute [`01_verify_setup.sql`](./01_verify_setup.sql):
+   Connect to `carbon_db` and execute [`Oluwarotimi_Oluwafemi_301930838_01_VerifySetup.sql`](./Oluwarotimi_Oluwafemi_301930838_01_VerifySetup.sql):
    ```sql
    SELECT version(), current_database(), current_user;
    ```
 
 3. **Deploy the Normalized Schema:**
-   Run [`02_create_tables.sql`](./02_create_tables.sql) to create all 8 tables, indexes, check constraints, foreign keys, and default values inside a single transactional block:
+   Run [`Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql`](./Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql) to create all 8 tables, indexes, check constraints, foreign keys, and default values inside a single transactional block:
    ```bash
-   psql -U postgres -d carbon_db -f 02_create_tables.sql
+   psql -U postgres -d carbon_db -f Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql
    ```
-   *(Or open `02_create_tables.sql` in pgAdmin 4 Query Tool and press **F5**)*.
+   *(Or open `Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql` in pgAdmin 4 Query Tool and press **F5**)*.
 
 4. **Execute Automated Integrity Tests:**
-   Run [`03_constraint_tests.sql`](./03_constraint_tests.sql) to execute setup rows, negative constraint blocks, and cleanup:
+   Run [`Oluwarotimi_Oluwafemi_301930838_03_ConstraintTests.sql`](./Oluwarotimi_Oluwafemi_301930838_03_ConstraintTests.sql) to execute setup rows, negative constraint blocks, and cleanup:
    ```bash
-   psql -U postgres -d carbon_db -f 03_constraint_tests.sql
+   psql -U postgres -d carbon_db -f Oluwarotimi_Oluwafemi_301930838_03_ConstraintTests.sql
    ```
    *Confirm in the Messages tab that all 10 tests return `PASS`.*
 
 5. **Populate Production Seed Data:**
-   Run [`04_seed_data.sql`](./04_seed_data.sql) to populate 5,001 customers, 6,001 wallets, 200,000+ transactions, 400,000+ ledger lines, and fraud flags:
+   Run [`Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql`](./Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql) to populate 5,001 customers, 6,001 wallets, 200,000+ transactions, 400,000+ ledger lines, and fraud flags:
    ```bash
-   psql -U postgres -d carbon_db -f 04_seed_data.sql
+   psql -U postgres -d carbon_db -f Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql
    ```
    *Execution time is typically 15–30 seconds.*
 
@@ -387,7 +387,7 @@ portfolio-1-database-design/
 
 ## 10. Data Verification & Invariant Audits
 
-After running [`04_seed_data.sql`](./04_seed_data.sql), execute these verification queries to confirm dataset scale and double-entry consistency:
+After running [`Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql`](./Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql), execute these verification queries to confirm dataset scale and double-entry consistency:
 
 ### 10.1 Table Row Counts
 ```sql
@@ -427,31 +427,31 @@ FROM (
 The following screenshots document the step-by-step physical deployment and execution within **pgAdmin 4** on **PostgreSQL 18**:
 
 ### 11.1 PostgreSQL 18 Server Connection & Engine Health
-![PostgreSQL 18 Dashboard](screenshots/Screenshot%202026-10-20%20000035.png)  
+![PostgreSQL 18 Dashboard](screenshots/Oluwarotimi_Oluwafemi_301930838_Screenshot06.png)  
 *Figure 2: PostgreSQL 18 pgAdmin 4 dashboard verifying server connectivity, session pooling, and transaction throughput.*
 
 ---
 
-### 11.2 Schema Table Creation & Commit (`02_create_tables.sql`)
-![Table Creation Commit](screenshots/Screenshot%202026-10-20%20204157.png)  
-*Figure 3: Execution of `02_create_tables.sql` successfully creating and committing all 8 normalized relations in 216ms.*
+### 11.2 Schema Table Creation & Commit (`Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql`)
+![Table Creation Commit](screenshots/Oluwarotimi_Oluwafemi_301930838_Screenshot08.png)  
+*Figure 3: Execution of `Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql` successfully creating and committing all 8 normalized relations in 216ms.*
 
 ---
 
-### 11.3 Constraint Testing Execution (`03_constraint_tests.sql`)
-![Constraint Tests](screenshots/Screenshot%202026-10-20%20204552.png)  
+### 11.3 Constraint Testing Execution (`Oluwarotimi_Oluwafemi_301930838_03_ConstraintTests.sql`)
+![Constraint Tests](screenshots/Oluwarotimi_Oluwafemi_301930838_Screenshot09.png)  
 *Figure 4: Automated negative constraint test harness confirming PASS notices for domain/check/unique invariants and blocking restricted customer deletion.*
 
 ---
 
-### 11.4 High-Volume Seed Data Execution (`04_seed_data.sql`)
-![Seed Data Execution](screenshots/seeddata.png)  
-*Figure 5: Execution of `04_seed_data.sql` completing 200,000+ transfer simulations, window function balances, cascading resets, and `ANALYZE` in ~24.99 seconds.*
+### 11.4 High-Volume Seed Data Execution (`Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql`)
+![Seed Data Execution](screenshots/Oluwarotimi_Oluwafemi_301930838_SeedData.png)  
+*Figure 5: Execution of `Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql` completing 200,000+ transfer simulations, window function balances, cascading resets, and `ANALYZE` in ~24.99 seconds.*
 
 ---
 
 ### 11.5 Populated Database & Balance Audit (`accounts` table)
-![Accounts Data Output](screenshots/Screenshot%202026-10-20%20224901.png)  
+![Accounts Data Output](screenshots/Oluwarotimi_Oluwafemi_301930838_Screenshot10.png)  
 *Figure 6: Data output grid verifying 6,001 active wallets, NUBAN account numbers, and synchronized multi-million Naira balances.*
 
 

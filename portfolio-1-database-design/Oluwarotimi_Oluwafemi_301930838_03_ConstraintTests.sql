@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Portfolio 1: constraint tests for NairaPay
--- Run on nairapay_db AFTER 02_create_tables.sql, in ONE go (F5).
+-- Run on nairapay_db AFTER Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql, in ONE go (F5).
 -- Each negative test is wrapped in a DO block that expects the database
 -- to reject the bad row, then prints PASS. If the bad row is accepted,
 -- the block raises an error instead. Read the output in the Messages tab.
