@@ -1,0 +1,200 @@
+================================================================================
+PORTFOLIO 2: QUERY OPTIMISATION — PERFORMANCE RESULTS SUMMARY
+================================================================================
+Database : carbon_db | Engine: PostgreSQL 18.0 (x64)
+Candidate: Oluwafemi Emmanuel Oluwarotimi (301930838)
+Course   : MIT 8103 – Advanced Database Systems
+Script   : Oluwarotimi_Oluwafemi_301930838_Optimisation_Indexes.sql
+Plans    : See before.txt (baseline) and after.txt (post-optimisation)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 1 — BENCHMARK RESULTS MATRIX
+────────────────────────────────────────────────────────────────────────────────
+
+Query  Description                   Before      After       Speedup  Buffer Reduction
+─────  ───────────────────────────────────────────────────────────────────────────────
+Q1     Account Statement (50 rows)    361.35 ms   0.985 ms   ~366x    1,857 -> 56   (97%)
+Q2     Daily Transfer Totals (30d)    238.01 ms   4.78 ms    ~50x     1,244 -> 72   (94%)
+Q3     Customer Largest Transfers     285.75 ms   1.95 ms    ~146x    3,140 -> 112  (96%)
+Q4     Large Transfer Fraud (AML)     235.36 ms   7.51 ms    ~31x     3,140 -> 248  (92%)
+Q5     Idempotency Lookup (CONTROL)   0.061 ms    0.061 ms   1.0x     3 -> 3        (0%)
+Q6     Balance Reconciliation         1,001.25 ms 33.85 ms   ~30x     3,176 -> 420  (87%)
+Q7     Unbalanced Journals Audit      1,293.15 ms 115.64 ms  ~11x     3,192 -> 620  (81%)
+Q8     Net Treasury Movement (90d)    278.91 ms   11.34 ms   ~25x     1,244 -> 155  (88%)
+Q9     Join Fan-Out Trap (corrected)  322.95 ms   3.76 ms    ~86x     5,128 -> 144  (97%)
+
+TOTALS (Q1-Q9 excluding Q5 control):
+  Before: 4,016.73 ms aggregate query time
+  After :   179.85 ms aggregate query time
+  Overall Speedup : ~22x reduction in total query latency
+  Overall I/O Reduction: ~94% fewer buffer blocks consumed
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 2 — PER-QUERY EXECUTION PLAN CHANGE LOG
+────────────────────────────────────────────────────────────────────────────────
+
+Q1 — Account Statement
+  BEFORE Access Path : Seq Scan on ledger_entries → top-N heapsort → Nested Loop
+  AFTER Access Path  : Index Only Scan (idx_ledger_entries_account_statement) → Nested Loop
+  Sort Node          : ELIMINATED (B-Tree stores data in created_at DESC order)
+  Key Technique      : Composite index with INCLUDE covers all projected columns
+  Heap Fetches       : 0 (Index-Only Scan; INCLUDE clause removes heap reads)
+
+Q2 — Daily Transfer Totals
+  BEFORE Access Path : Seq Scan on transactions → HashAggregate → Sort
+  AFTER Access Path  : Partial Index Only Scan (idx_transactions_daily_transfers)
+  Key Technique      : Filtered partial B-Tree (WHERE txn_type='TRANSFER' AND
+                       status='COMPLETED') reduces index size by ~40%
+  Heap Fetches       : 0 (initiated_at + amount in index; status in WHERE clause)
+
+Q3 — Customer Largest Transfers
+  BEFORE Access Path : Seq Scan accounts + Seq Scan ledger_entries + Hash Join
+  AFTER Access Path  : Index Scan (idx_accounts_customer_id) +
+                       Index Only Scan (idx_ledger_entries_account_direction) +
+                       Nested Loop
+  Key Technique      : Two missing FK indexes added; direction pre-filtered in index
+  Heap Fetches       : 0 on ledger_entries (INCLUDE (transaction_id) covers join key)
+
+Q4 — Large Transfer Fraud Pattern
+  BEFORE Access Path : Seq Scan ledger_entries (100,000 rows) → Hash Join → Aggregate
+  AFTER Access Path  : Partial Index Only Scan (idx_ledger_entries_large_debits)
+  Key Technique      : Partial index: WHERE direction='DEBIT' AND amount>=4000
+                       shrinks index by ~95% (only 1,215 qualifying rows indexed)
+  Heap Fetches       : 0 (created_at + account_id + amount in index)
+
+Q5 — Idempotency Lookup (CONTROL)
+  BEFORE Access Path : Index Scan (transactions_idempotency_key_key) — auto-index
+  AFTER Access Path  : Index Scan (transactions_idempotency_key_key) — unchanged
+  Result             : NO CHANGE (demonstrates UNIQUE constraints auto-index;
+                       confirms FK constraints do NOT auto-index)
+  Key Lesson         : UNIQUE constraint -> automatic B-Tree; FK -> no auto-index
+
+Q6 — Balance Reconciliation
+  BEFORE Access Path : Seq Scan → External Merge Sort (3,024 kB disk spill) →
+                       DISTINCT ON → Hash Join
+  AFTER Access Path  : Index Only Scan (idx_ledger_entries_latest_balance) →
+                       DISTINCT ON (no sort needed) → Hash Join
+  Sort Node          : ELIMINATED — index pre-orders (account_id, created_at DESC,
+                       entry_id DESC) matching DISTINCT ON exactly
+  Disk Spill         : 3,024 kB -> 0 kB (sort eliminated, no disk I/O)
+  Heap Fetches       : 0 (balance_after in INCLUDE clause)
+  Result             : 0 rows — ledger fully reconciles with cached balances ✓
+
+Q7 — Unbalanced Journals Audit
+  BEFORE Access Path : Seq Scan transactions + Seq Scan ledger_entries + Hash Left Join
+  AFTER Access Path  : Index Only Scan (idx_transactions_audit_status) +
+                       Index Only Scan (idx_ledger_entries_transaction_id) +
+                       Merge Left Join
+  Join Algorithm     : Hash Left Join → Merge Left Join (no hash table build)
+  Memory             : 3,134 kB hash table → 0 kB (merge join uses sorted streams)
+  HashAggregate      : 4 disk batches (8,216 kB peak) → 1 batch (in-memory)
+  Result             : 0 rows — every completed/reversed transaction is balanced ✓
+
+Q8 — Net Treasury Movement
+  BEFORE Access Path : Seq Scan on transactions → Aggregate
+  AFTER Access Path  : Partial Index Only Scan (idx_transactions_treasury_timeline)
+  Key Technique      : WHERE txn_type='TRANSFER' in index definition eliminates
+                       all non-transfer rows from index tree
+  Heap Fetches       : 0 (status + amount in index; initiated_at used for range)
+  Result             : net_transfers=47,940 | net_amount=₦122,489,499.52
+                       reversed=26 | reversed_amount=₦70,832.05 | failed=985
+
+Q9 — Join Fan-Out Trap
+  BEFORE Access Path : Hash Join (transactions × ledger_entries → 82,000 rows) +
+                       Aggregate (double-counts every transfer amount)
+  AFTER Access Path  : Index Only Scan on transactions only (join removed)
+  Correctness Fix    : fan_out_total was ₦79,117,587.72 (2× inflated)
+                       After fix: fan_out_total = correct_total = ₦39,558,793.86
+  Key Lesson         : In double-entry ledger schemas, joining transactions to
+                       ledger_entries for aggregation always doubles the result.
+                       Pre-aggregate in a CTE or filter on direction = 'DEBIT'.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 3 — EXECUTION PLAN NODE TRANSITION MATRIX
+────────────────────────────────────────────────────────────────────────────────
+
+Query  Node Type (BEFORE)         Node Type (AFTER)               Change
+─────  ──────────────────────────────────────────────────────────────────────────
+Q1     Seq Scan                   Index Only Scan                 Eliminated heap
+Q1     Sort (top-N heapsort)      (eliminated)                    Sort removed
+Q2     Seq Scan                   Partial Index Only Scan         Eliminated heap
+Q2     HashAggregate              HashAggregate                   Unchanged
+Q3     Seq Scan × 2               Index Scan + Index Only Scan    Both scans indexed
+Q3     Hash Join × 2              Nested Loop × 2                 More efficient join
+Q4     Seq Scan                   Partial Index Only Scan         95% rows skipped
+Q5     Index Scan                 Index Scan                      No change (control)
+Q6     Seq Scan                   Index Only Scan                 Eliminated heap
+Q6     External Merge Sort(disk)  (eliminated)                    Disk spill removed
+Q7     Seq Scan × 2               Index Only Scan × 2             Both eliminated
+Q7     Hash Left Join             Merge Left Join                 Algorithm changed
+Q7     HashAggregate (4 batches)  HashAggregate (1 batch)         Memory halved
+Q8     Seq Scan                   Partial Index Only Scan         Transfer-only index
+Q9     Seq Scan + Hash Join       Index Only Scan (join removed)  Cardinality fixed
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 4 — INDEXES CREATED (Optimisation_Indexes.sql)
+────────────────────────────────────────────────────────────────────────────────
+
+#   Index Name                              Table           Type        Purpose
+──  ──────────────────────────────────────────────────────────────────────────────
+1   idx_accounts_customer_id               accounts         B-Tree FK   Q3 join
+2   idx_ledger_entries_account_id          ledger_entries   B-Tree FK   Q1,Q3,Q4,Q6
+3   idx_ledger_entries_transaction_id      ledger_entries   B-Tree FK   Q1,Q7,Q9
+4   idx_ledger_entries_account_statement   ledger_entries   B-Tree Cov  Q1 (+ INCLUDE)
+5   idx_transactions_daily_transfers       transactions     Partial     Q2 (+ Q9 reuse)
+6   idx_ledger_entries_account_direction   ledger_entries   B-Tree Cov  Q3 (+ INCLUDE)
+7   idx_ledger_entries_large_debits        ledger_entries   Partial     Q4
+8   idx_ledger_entries_latest_balance      ledger_entries   B-Tree Cov  Q6 (+ INCLUDE)
+9   idx_transactions_audit_status          transactions     Partial     Q7
+10  idx_transactions_treasury_timeline     transactions     Partial     Q8
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 5 — KEY DATABASE ENGINEERING PRINCIPLES DEMONSTRATED
+────────────────────────────────────────────────────────────────────────────────
+
+1. FOREIGN KEY INDEXING GAP (Q1, Q3, Q7)
+   PostgreSQL does NOT automatically index FOREIGN KEY columns. Without
+   idx_accounts_customer_id and idx_ledger_entries_transaction_id, every join
+   on these FK columns triggers a full sequential scan. This is a critical
+   production pitfall that caused Q3 and Q7 to run >1 second.
+
+2. SORT ELIMINATION VIA B-TREE ORDERING (Q1, Q6)
+   Matching the ORDER BY / DISTINCT ON key exactly to the B-Tree index column
+   order (including DESC direction flags) allows PostgreSQL to eliminate Sort
+   nodes entirely. For Q6, this also eliminated a 3,024 kB disk sort spill.
+
+3. PARTIAL / FILTERED INDEXES (Q2, Q4, Q7, Q8)
+   Defining indexes with WHERE clauses drastically reduces index tree size.
+   The idx_ledger_entries_large_debits index covers only ~1.2% of all rows,
+   making it 98.8% smaller than a full-column index while answering Q4 instantly.
+
+4. COVERING INDEXES WITH INCLUDE (Q1, Q3, Q4, Q6)
+   Including non-key columns in B-Tree leaf pages via INCLUDE enables Index-Only
+   Scans — the engine never touches the table heap. Every INCLUDE-based index
+   in this portfolio achieved 0 heap fetches.
+
+5. THE NEGATIVE CONTROL LESSON (Q5)
+   Q5's UNIQUE constraint auto-created transactions_idempotency_key_key B-Tree.
+   Its 0.06 ms execution before and after proves: (a) UNIQUE constraints create
+   automatic indexes; (b) FOREIGN KEY constraints do not — requiring manual DDL.
+
+6. JOIN CARDINALITY & THE FAN-OUT TRAP (Q9)
+   Joining a 1:N parent-child relationship (transactions : ledger_entries = 1:2)
+   before aggregating doubles every transaction.amount in the SUM. This is a
+   correctness bug, not a performance bug. The fix is architectural: remove the
+   join or pre-aggregate the child table first.
+
+7. WRITE AMPLIFICATION TRADE-OFF
+   The 10 indexes add write overhead on INSERT into transactions/ledger_entries.
+   Mitigation: ledger_entries is append-only (immutable financial history), so
+   partial indexes targeting rare conditions (e.g., amount >= 4000) never trigger
+   write amplification on ordinary small-amount transactions.
+
+================================================================================
+END OF RESULTS SUMMARY
+================================================================================

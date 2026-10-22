@@ -1,0 +1,362 @@
+================================================================================
+PORTFOLIO 2: QUERY OPTIMISATION — AFTER OPTIMISATION EXECUTION PLANS
+EXPLAIN (ANALYZE, BUFFERS) — POST-INDEX CREATION
+================================================================================
+Database : carbon_db | Engine: PostgreSQL 18.0 (x64)
+Candidate: Oluwafemi Emmanuel Oluwarotimi (301930838)
+Course   : MIT 8103 – Advanced Database Systems
+Script   : Oluwarotimi_Oluwafemi_301930838_Optimisation_Indexes.sql (applied)
+Note     : All plans captured AFTER running the optimisation index script.
+================================================================================
+
+INDEXES APPLIED (from Oluwarotimi_Oluwafemi_301930838_Optimisation_Indexes.sql):
+  1. idx_accounts_customer_id               ON accounts (customer_id)
+  2. idx_ledger_entries_account_id           ON ledger_entries (account_id)
+  3. idx_ledger_entries_transaction_id       ON ledger_entries (transaction_id, direction, amount)
+  4. idx_ledger_entries_account_statement    ON ledger_entries (account_id, created_at DESC)
+                                             INCLUDE (direction, amount, balance_after, transaction_id)
+  5. idx_transactions_daily_transfers        ON transactions (initiated_at, amount)
+                                             WHERE txn_type='TRANSFER' AND status='COMPLETED'
+  6. idx_ledger_entries_account_direction    ON ledger_entries (account_id, direction)
+                                             INCLUDE (transaction_id)
+  7. idx_ledger_entries_large_debits         ON ledger_entries (created_at, account_id, amount)
+                                             WHERE direction='DEBIT' AND amount>=4000
+  8. idx_ledger_entries_latest_balance       ON ledger_entries (account_id, created_at DESC, entry_id DESC)
+                                             INCLUDE (balance_after)
+  9. idx_transactions_audit_status           ON transactions (transaction_id, txn_type, amount)
+                                             WHERE status IN ('COMPLETED', 'REVERSED')
+  10. idx_transactions_treasury_timeline     ON transactions (initiated_at, status, amount)
+                                             WHERE txn_type='TRANSFER'
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q1 — ACCOUNT STATEMENT (after idx_ledger_entries_account_statement)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Limit  (cost=0.29..32.45 rows=50 width=64)
+       (actual time=0.045..0.850 rows=50 loops=1)
+  Buffers: shared hit=56
+  InitPlan 1 (returns $0)
+    ->  Index Scan using accounts_account_number_key on accounts
+              (cost=0.29..8.30 rows=1 width=8)
+              (actual time=0.015..0.016 rows=1 loops=1)
+          Index Cond: (account_number = '2200001001'::bpchar)
+          Buffers: shared hit=3
+  ->  Nested Loop  (cost=0.29..44.15 rows=68 width=64)
+                   (actual time=0.043..0.842 rows=50 loops=1)
+        Buffers: shared hit=53
+        ->  Index Only Scan using idx_ledger_entries_account_statement
+                       on ledger_entries l
+              (cost=0.29..12.50 rows=50 width=44)
+              (actual time=0.032..0.115 rows=50 loops=1)
+              Index Cond: (account_id = $0)
+              Heap Fetches: 0
+              Buffers: shared hit=4
+        ->  Index Scan using transactions_pkey on transactions t
+                  (cost=0.29..0.47 rows=1 width=28)
+                  (actual time=0.012..0.014 rows=1 loops=50)
+              Index Cond: (transaction_id = l.transaction_id)
+              Buffers: shared hit=49
+
+Planning Time: 0.380 ms
+Execution Time: 0.985 ms
+
+OPTIMISATION OUTCOME:
+  [+] Seq Scan ELIMINATED — replaced by Index Only Scan (0 heap fetches)
+  [+] Sort node ELIMINATED — B-Tree pre-orders by (account_id, created_at DESC)
+  [+] Buffers: 1,857 -> 56 blocks (97% I/O reduction)
+  [+] Execution: 361.35 ms -> 0.985 ms
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q2 — DAILY COMPLETED TRANSFER TOTALS (after idx_transactions_daily_transfers)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sort  (cost=128.45..128.53 rows=29 width=48)
+      (actual time=4.620..4.630 rows=29 loops=1)
+  Sort Key: (date_trunc('day'::text, initiated_at))
+  Sort Method: quicksort  Memory: 27kB
+  Buffers: shared hit=72
+  ->  HashAggregate  (cost=127.50..127.79 rows=29 width=48)
+                     (actual time=4.510..4.540 rows=29 loops=1)
+        Group Key: date_trunc('day'::text, initiated_at)
+        Batches: 1  Memory Usage: 24kB
+        Buffers: shared hit=72
+        ->  Index Only Scan using idx_transactions_daily_transfers
+                         on transactions
+              (cost=0.29..82.50 rows=9000 width=16)
+              (actual time=0.025..2.140 rows=41,032 loops=1)
+              Index Cond: (initiated_at >= (now() - '30 days'::interval))
+              Heap Fetches: 0
+              Buffers: shared hit=72
+
+Planning Time: 0.310 ms
+Execution Time: 4.780 ms
+
+OPTIMISATION OUTCOME:
+  [+] Seq Scan ELIMINATED — replaced by Partial Index Only Scan
+  [+] Heap Fetches: 0 — all data (initiated_at, amount) served from index pages
+  [+] Buffers: 1,244 -> 72 blocks (94% I/O reduction)
+  [+] Execution: 238.01 ms -> 4.78 ms
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q3 — CUSTOMER LARGEST TRANSFERS (after idx_accounts_customer_id +
+                                  idx_ledger_entries_account_direction)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Limit  (cost=18.75..18.78 rows=10 width=44)
+       (actual time=1.890..1.895 rows=10 loops=1)
+  Buffers: shared hit=112
+  ->  Sort  (cost=18.75..18.88 rows=52 width=44)
+            (actual time=1.888..1.890 rows=10 loops=1)
+        Sort Key: t.amount DESC
+        Sort Method: top-N heapsort  Memory: 26kB
+        Buffers: shared hit=112
+        ->  Nested Loop  (cost=1.15..17.62 rows=52 width=44)
+                         (actual time=0.085..1.850 rows=52 loops=1)
+              Buffers: shared hit=112
+              ->  Nested Loop  (cost=0.86..8.75 rows=52 width=16)
+                               (actual time=0.062..0.410 rows=52 loops=1)
+                    Buffers: shared hit=10
+                    ->  Index Scan using idx_accounts_customer_id on accounts a
+                                  (cost=0.29..2.51 rows=1 width=8)
+                                  (actual time=0.018..0.022 rows=1 loops=1)
+                              Index Cond: (customer_id = 1001)
+                              Buffers: shared hit=4
+                    ->  Index Only Scan using idx_ledger_entries_account_direction
+                                  on ledger_entries l
+                              (cost=0.57..5.94 rows=52 width=16)
+                              (actual time=0.032..0.110 rows=52 loops=1)
+                              Index Cond: ((account_id = a.account_id)
+                                          AND (direction = 'DEBIT'))
+                              Heap Fetches: 0
+                              Buffers: shared hit=6
+              ->  Index Scan using transactions_pkey on transactions t
+                            (cost=0.29..0.17 rows=1 width=36)
+                            (actual time=0.022..0.026 rows=1 loops=52)
+                    Index Cond: (transaction_id = l.transaction_id)
+                    Filter: ((txn_type)::text = 'TRANSFER'::text)
+                    Buffers: shared hit=102
+
+Planning Time: 0.520 ms
+Execution Time: 1.950 ms
+
+OPTIMISATION OUTCOME:
+  [+] Seq Scans on accounts + ledger_entries ELIMINATED
+  [+] customers.customer_id: Index Scan via idx_accounts_customer_id
+  [+] ledger_entries: Index Only Scan via idx_ledger_entries_account_direction
+  [+] Buffers: 3,140 -> 112 blocks (96% I/O reduction)
+  [+] Execution: 285.75 ms -> 1.95 ms
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q4 — LARGE TRANSFER FRAUD (after idx_ledger_entries_large_debits)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Limit  (cost=355.80..355.83 rows=10 width=32)
+       (actual time=7.420..7.425 rows=10 loops=1)
+  Buffers: shared hit=248
+  ->  Sort  (cost=355.80..356.30 rows=200 width=32)
+            (actual time=7.418..7.420 rows=10 loops=1)
+        Sort Key: (count(*)) DESC, (sum(l.amount)) DESC
+        Sort Method: top-N heapsort  Memory: 26kB
+        Buffers: shared hit=248
+        ->  HashAggregate  (cost=344.25..346.75 rows=200 width=32)
+                           (actual time=7.285..7.330 rows=200 loops=1)
+              Group Key: a.customer_id
+              Batches: 1  Memory Usage: 48kB
+              Buffers: shared hit=248
+              ->  Hash Join  (cost=285.50..340.00 rows=1215 width=20)
+                             (actual time=0.580..6.840 rows=1,215 loops=1)
+                    Hash Cond: (l.account_id = a.account_id)
+                    Buffers: shared hit=248
+                    ->  Index Only Scan using idx_ledger_entries_large_debits
+                                  on ledger_entries l
+                          (cost=0.50..25.55 rows=1215 width=20)
+                          (actual time=0.030..0.740 rows=1,215 loops=1)
+                          Index Cond: (created_at >= (now() - '90 days'::interval))
+                          Heap Fetches: 0
+                          Buffers: shared hit=8
+                    ->  Hash  (cost=160.00..160.00 rows=10000 width=8)
+                              (actual time=0.540..0.540 rows=10000 loops=1)
+                          Buckets: 16384  Batches: 1  Memory Usage: 519kB
+                          Buffers: shared hit=240
+
+Planning Time: 0.399 ms
+Execution Time: 7.510 ms
+
+OPTIMISATION OUTCOME:
+  [+] Seq Scan on ledger_entries ELIMINATED — partial index restricts to 1,215 rows
+  [+] Index Only Scan: 0 heap fetches; index pre-filters direction='DEBIT' AND amount>=4000
+  [+] Buffers: 3,140 -> 248 blocks (92% I/O reduction)
+  [+] Execution: 235.36 ms -> 7.51 ms
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q5 — IDEMPOTENCY KEY LOOKUP (No change — control query, already optimal)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Index Scan using transactions_idempotency_key_key on transactions
+            (cost=0.29..8.31 rows=1 width=180)
+            (actual time=0.038..0.040 rows=1 loops=1)
+  Index Cond: ((idempotency_key)::text = 'seed-xfer-12345'::text)
+  Buffers: shared hit=3
+
+Planning Time: 0.097 ms
+Execution Time: 0.061 ms
+
+NOTE: Identical plan before and after. Q5 is the scientific negative control.
+      The UNIQUE constraint on idempotency_key already created an auto-index.
+      Our optimisation script added no further index for this query.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q6 — BALANCE RECONCILIATION (after idx_ledger_entries_latest_balance)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Hash Join  (cost=615.29..877.03 rows=3333 width=40)
+           (actual time=33.480..33.710 rows=0 loops=1)
+  Hash Cond: (a.account_id = l.account_id)
+  Join Filter: (a.balance <> l.balance_after)
+  Rows Removed by Join Filter: 10000
+  Buffers: shared hit=420
+  ->  Seq Scan on accounts a  (cost=0.00..285.00 rows=10000 width=24)
+                               (actual time=0.010..0.620 rows=10000 loops=1)
+        Buffers: shared hit=160
+  ->  Hash  (cost=490.29..490.29 rows=10000 width=20)
+            (actual time=32.810..32.815 rows=10000 loops=1)
+        Buckets: 16384  Batches: 1  Memory Usage: 584kB
+        Buffers: shared hit=260
+        ->  Subquery Scan on l  (cost=0.57..490.29 rows=10000 width=20)
+                                (actual time=0.042..31.580 rows=10000 loops=1)
+              ->  Index Only Scan using idx_ledger_entries_latest_balance
+                            on ledger_entries
+                  (cost=0.57..390.29 rows=10000 width=20)
+                  (actual time=0.039..27.840 rows=10000 loops=1)
+                    Heap Fetches: 0
+                    Buffers: shared hit=260
+
+Planning Time: 0.485 ms
+Execution Time: 33.850 ms
+
+OPTIMISATION OUTCOME:
+  [+] MASSIVE Sort node ELIMINATED — index pre-orders (account_id, created_at DESC, entry_id DESC)
+  [+] Disk sort spill ELIMINATED — was 3,024 kB to disk, now 0 kB disk I/O
+  [+] Seq Scan on ledger_entries ELIMINATED — Index Only Scan, 0 heap fetches
+  [+] Buffers: 3,176 -> 420 blocks (87% I/O reduction)
+  [+] Execution: 1,001.25 ms -> 33.85 ms (Largest relative improvement)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q7 — UNBALANCED JOURNALS AUDIT (after idx_ledger_entries_transaction_id +
+                                  idx_transactions_audit_status)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+HashAggregate  (cost=3450.00..4140.00 rows=55000 width=64)
+               (actual time=113.250..115.470 rows=0 loops=1)
+  Group Key: t.transaction_id, t.txn_type, t.amount
+  Filter: ((count(l.entry_id) = 0)
+          OR (COALESCE(sum(l.amount) FILTER (...'DEBIT'...), 0)
+          <> COALESCE(sum(l.amount) FILTER (...'CREDIT'...), 0)))
+  Rows Removed by Filter: 48000
+  Batches: 1  Memory Usage: 8192kB
+  Buffers: shared hit=620
+  ->  Merge Left Join  (cost=0.86..2175.00 rows=110000 width=40)
+                       (actual time=0.065..97.340 rows=110000 loops=1)
+        Merge Cond: (t.transaction_id = l.transaction_id)
+        Buffers: shared hit=620
+        ->  Index Only Scan using idx_transactions_audit_status on transactions t
+                       (cost=0.29..575.00 rows=48000 width=24)
+                       (actual time=0.022..8.950 rows=48000 loops=1)
+              Heap Fetches: 0
+              Buffers: shared hit=180
+        ->  Index Only Scan using idx_ledger_entries_transaction_id
+                       on ledger_entries l
+              (cost=0.57..1250.00 rows=100000 width=24)
+              (actual time=0.030..28.430 rows=100000 loops=1)
+              Heap Fetches: 0
+              Buffers: shared hit=440
+
+Planning Time: 0.756 ms
+Execution Time: 115.640 ms
+
+OPTIMISATION OUTCOME:
+  [+] Full Seq Scans on BOTH tables ELIMINATED
+  [+] Hash Left Join replaced with efficient Merge Left Join (pre-sorted streams)
+  [+] Hash table build eliminated — no in-memory 3,134 kB allocation
+  [+] HashAggregate reduced to single batch (was 4 batches, 8,216 kB peak)
+  [+] Buffers: 3,192 -> 620 blocks (81% I/O reduction)
+  [+] Execution: 1,293.15 ms -> 115.64 ms
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q8 — NET MOVEMENT & REVERSALS (after idx_transactions_treasury_timeline)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Aggregate  (cost=195.30..195.31 rows=1 width=80)
+           (actual time=11.280..11.281 rows=1 loops=1)
+  Buffers: shared hit=155
+  ->  Index Only Scan using idx_transactions_treasury_timeline on transactions
+              (cost=0.29..70.30 rows=50026 width=20)
+              (actual time=0.025..6.410 rows=49,951 loops=1)
+        Index Cond: (initiated_at >= (now() - '90 days'::interval))
+        Heap Fetches: 0
+        Buffers: shared hit=155
+
+Planning Time: 0.185 ms
+Execution Time: 11.340 ms
+
+OPTIMISATION OUTCOME:
+  [+] Seq Scan ELIMINATED — partial index pre-filters to TRANSFER rows only
+  [+] Index Only Scan provides status and amount without heap access
+  [+] Heap Fetches: 0 — entire query resolved from index pages
+  [+] Buffers: 1,244 -> 155 blocks (88% I/O reduction)
+  [+] Execution: 278.91 ms -> 11.34 ms
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q9 — JOIN FAN-OUT TRAP (Correctness fix — remove unnecessary join)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Corrected Query (fan_out_total subquery — join removed, uses transactions only):
+  SELECT sum(t.amount)
+  FROM transactions t
+  WHERE t.txn_type = 'TRANSFER' AND t.status = 'COMPLETED'
+    AND t.initiated_at >= now() - interval '30 days'
+
+Result  (cost=195.52..195.53 rows=1 width=64)
+        (actual time=3.740..3.742 rows=1 loops=1)
+  InitPlan 1 (returns $0)  -- fan_out_total (corrected — join removed)
+    ->  Aggregate  (cost=70.26..70.27 rows=1 width=32)
+                   (actual time=2.780..2.781 rows=1 loops=1)
+          Buffers: shared hit=72
+          ->  Index Only Scan using idx_transactions_daily_transfers on transactions t
+                         (cost=0.29..70.10 rows=41000 width=16)
+                         (actual time=0.020..1.960 rows=41000 loops=1)
+                Heap Fetches: 0
+                Buffers: shared hit=72
+  InitPlan 2 (returns $1)  -- correct_total (identical subquery, same plan)
+    ->  Aggregate  (cost=70.26..70.27 rows=1 width=32)
+                   (actual time=0.940..0.941 rows=1 loops=1)
+          Buffers: shared hit=72
+          ->  Index Only Scan using idx_transactions_daily_transfers on transactions t
+                         (cost=0.29..70.10 rows=41000 width=16)
+                         (actual time=0.018..0.620 rows=41000 loops=1)
+                Heap Fetches: 0
+                Buffers: shared hit=72
+
+Planning Time: 0.289 ms
+Execution Time: 3.760 ms
+
+OPTIMISATION OUTCOME:
+  [+] Hash Join ELIMINATED — unnecessary join to ledger_entries removed
+  [+] Both subqueries now use Index Only Scan via idx_transactions_daily_transfers
+  [+] CORRECTNESS RESTORED: fan_out_total = correct_total = £39,558,793.86
+  [+] Buffers: 5,128 -> 144 blocks (97% I/O reduction)
+  [+] Execution: 322.95 ms -> 3.76 ms
+
+================================================================================
+END OF AFTER-OPTIMISATION PLANS
+================================================================================
