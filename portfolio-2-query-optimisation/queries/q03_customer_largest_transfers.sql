@@ -1,4 +1,4 @@
-Q3: A customer's 10 largest outgoing transfers (joins three tables).
+-- Q3: A customer's 10 largest outgoing transfers (joins three tables).
 -- Business use: customer support investigating a dispute.
 SELECT t.transaction_id, t.amount, t.initiated_at, t.reference
 FROM accounts a
