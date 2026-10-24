@@ -1,0 +1,137 @@
+INSERT 0 0
+INSERT 0 1
+INSERT 0 1
+ account_number | balance  
+----------------+----------
+ 9000000001     | 500.0000
+ 9000000002     | 500.0000
+(2 rows)
+
+BEGIN
+UPDATE 1
+UPDATE 1
+ account_number | balance  
+----------------+----------
+ 9000000001     | 400.0000
+ 9000000002     | 600.0000
+(2 rows)
+
+COMMIT
+ account_number | balance  
+----------------+----------
+ 9000000001     | 400.0000
+ 9000000002     | 600.0000
+(2 rows)
+
+INSERT 0 0
+INSERT 0 1
+INSERT 0 1
+ account_number | balance  
+----------------+----------
+ 9000000001     | 500.0000
+ 9000000002     | 500.0000
+(2 rows)
+
+BEGIN
+ transfer_funds 
+----------------
+         206099
+(1 row)
+
+ account_number | balance  
+----------------+----------
+ 9000000001     | 450.0000
+ 9000000002     | 550.0000
+(2 rows)
+
+ROLLBACK
+ account_number | balance  
+----------------+----------
+ 9000000001     | 500.0000
+ 9000000002     | 500.0000
+(2 rows)
+
+ rows_for_key 
+--------------
+            0
+(1 row)
+
+INSERT 0 0
+INSERT 0 1
+INSERT 0 1
+ account_number | balance  
+----------------+----------
+ 9000000001     | 500.0000
+ 9000000002     | 500.0000
+(2 rows)
+
+ account_number | balance  
+----------------+----------
+ 9000000001     | 500.0000
+ 9000000002     | 500.0000
+(2 rows)
+
+ rows_for_key 
+--------------
+            0
+(1 row)
+
+INSERT 0 0
+INSERT 0 1
+INSERT 0 1
+ account_number | balance  
+----------------+----------
+ 9000000001     | 500.0000
+ 9000000002     | 500.0000
+(2 rows)
+
+ first_call 
+------------
+     206101
+(1 row)
+
+ second_call 
+-------------
+      206101
+(1 row)
+
+ rows_for_key 
+--------------
+            1
+(1 row)
+
+ account_number | balance  
+----------------+----------
+ 9000000001     | 475.0000
+ 9000000002     | 525.0000
+(2 rows)
+
+INSERT 0 0
+INSERT 0 1
+INSERT 0 1
+ account_number | balance  
+----------------+----------
+ 9000000001     | 500.0000
+ 9000000002     | 500.0000
+(2 rows)
+
+BEGIN
+ transfer_funds 
+----------------
+         206103
+(1 row)
+
+SAVEPOINT
+ROLLBACK
+COMMIT
+ account_number | balance  
+----------------+----------
+ 9000000001     | 490.0000
+ 9000000002     | 510.0000
+(2 rows)
+
+ idempotency_key |  status   
+-----------------+-----------
+ demo5-first-key | COMPLETED
+(1 row)
+
