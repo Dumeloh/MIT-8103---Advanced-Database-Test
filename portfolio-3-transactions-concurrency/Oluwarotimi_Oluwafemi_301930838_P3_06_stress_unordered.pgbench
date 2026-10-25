@@ -1,0 +1,8 @@
+\set a random(1001, 1020)
+\set b random(1001, 1020)
+\if :a = :b
+  \set b (:a % 20) + 1001
+\endif
+\set amt random(1, 5)
+\set k random(1, 1000000000)
+SELECT transfer_funds_unordered('22000' || :a::text, '22000' || :b::text, :amt, 'pgb-unord-' || :k::text || '-' || :client_id::text);
