@@ -104,4 +104,28 @@ $env:PGPASSWORD = '<your password>'
 
 ## Evidence
 
+
+- `Oluwarotimi_Oluwafemi_301930838_P3_01_function_test.png`: The same transaction ID returned twice, confirming that the retry did not transfer the money a second time..
+
+- `Oluwarotimi_Oluwafemi_301930838_P3_02_commit_rollback_output.png and P3_02b_commit_rollback_output.png`: I saved the output for all five demonstrations in the `02/02b` file, making it easier to review how commits, rollbacks, failures, idempotency, and savepoints behaved during my tests.
+
+- `Oluwarotimi_Oluwafemi_301930838_P3_03_exp1_lost_update.png`: I observed that both sessions read the same starting balance of 500, but the final balance dropped to 100, showing how concurrent transactions can lead to a lost withdrawal.
+
+- `Oluwarotimi_Oluwafemi_301930838_P3_04_exp2_waiting.png, P3_04b_exp2_waiting.png`: I noticed Session B was stuck waiting, while Session C clearly showed the lock wait, helping me understand how one transaction can hold up another.
+
+- `Oluwarotimi_Oluwafemi_301930838_P3_05_exp2_unblocked.png`: Session B resumed after the lock was released and correctly read the updated balance of 100.0000.
+
+- `Oluwarotimi_Oluwafemi_301930838_P3_06_exp3a_read_committed.png`: I observed that Session A read a balance of `500` and later saw it change to `400` within the same transaction, helping me understand how balances can change between reads.
+
+- `Oluwarotimi_Oluwafemi_301930838_P3_07_exp3b_repeatable_read.png`: Session A kept seeing a balance of 500 even after Session B committed its change. When A then tried to update the same row, PostgreSQL rejected it with the error "could not serialize access due to concurrent update", which shows that REPEATABLE READ stops a transaction from overwriting data that changed after its snapshot.
+
+- `Oluwarotimi_Oluwafemi_301930838_P3_08_exp4_deadlock.png`: I captured the “deadlock detected” error, which helped me see how conflicting lock requests can prevent transactions from completing successfully.
+
+- `Oluwarotimi_Oluwafemi_301930838_P3_09_stress_results.png and P3_09b_stress_results.png`: It compare the ordered and unordered `pgbench` results and see how much of a difference the locking approach made to performance and transaction success.
+
+- `Oluwarotimi_Oluwafemi_301930838_P3_10_integrity.png, P3_10b_integrity.png, P3_10c_integrity.png`: I compared the before, after-ordered, and after-unordered integrity files and confirmed that the financial records remained consistent throughout the tests. 
+
+- `Oluwarotimi_Oluwafemi_301930838_P3_11_own_experiment.png`: I captured the lock timeout error, which helped me understand how a transaction can be forced to stop waiting when a lock is held for too long.
+
+
 ## Reflection and AI-use declaration
