@@ -97,6 +97,11 @@ $env:PGPASSWORD = '<your password>'
 
 ## Key findings
 
+- **Lost update:** What stood out to me was that both sessions started with Alice’s balance at 500.00, and each updated it to 100.00. In the end, the balance remained at 100.0000, showing that one withdrawal had been lost without any error or warning.
+- **Ordered locking:** What impressed me was that all 2,000 transfers completed successfully with 0 failures, while the system handled 3,515.17 transactions per second.
+- **Unordered locking:** I was disappointed to see that 51 transfers failed due to deadlocks, leaving only 1,949 successful transfers and reducing throughput to 48.87 transactions per second.
+- **Integrity:** I was glad to see that the total amount remained unchanged at 1000000001000.0000, with zero unbalanced transactions, mismatched accounts, or stuck pending transactions across all three checks, even after the deadlocks.
+
 ## Evidence
 
 ## Reflection and AI-use declaration
