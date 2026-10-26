@@ -129,3 +129,10 @@ $env:PGPASSWORD = '<your password>'
 
 
 ## Reflection and AI-use declaration
+### Reflection
+
+What surprised me most was how easily concurrent transactions could cause lost updates and deadlocks when locking was not handled properly. I also learned that even when some transfers failed, the integrity checks could still confirm that no money was lost or created. I addressed the locking issues by using a consistent order when locking accounts. Next time, I would improve the tests by handling transaction retries and testing with more concurrent sessions.
+
+### AI-use declaration
+
+I used Claude to run the tests examine the results, understand the PostgreSQL transactions and concurrency. I checked the results by running the SQL scripts and `pgbench` tests, reviewing the outputs, and confirming that the integrity checks passed.
