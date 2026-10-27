@@ -135,4 +135,5 @@ What surprised me most was how easily concurrent transactions could cause lost u
 
 ### AI-use declaration
 
-I used Claude to run the tests examine the results, understand the PostgreSQL transactions and concurrency. I checked the results by running the SQL scripts and `pgbench` tests, reviewing the outputs, and confirming that the integrity checks passed.
+I used Claude to explain transactions and concurrency concepts, to help write the SQL and pgbench files for my Carbon schema, and to help troubleshoot errors. I ran every experiment myself, took my own screenshots, and wrote the analysis and README in my own words.
+

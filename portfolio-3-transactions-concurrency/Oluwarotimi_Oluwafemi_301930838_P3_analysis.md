@@ -14,11 +14,15 @@ I designed the transfer function as a sequence of five steps. The order matters 
 
 **Step 1: Check the idempotency key first**
 
-The function first checks whether the request's idempotency key has already been used. If it has, the function should return the previous result instead of processing the same transfer again.
+1. I check the idempotency key first so that if a transaction is retried, the existing record is found and the customer is not charged twice.
 
-This is particularly important when a network connection drops. A customer may press the transfer button again because they are unsure whether the first request succeeded. Without this check, the same payment could be processed twice, creating unnecessary stress and potentially costing the customer money.
+2. I located the account IDs first before placing any locks on the accounts.
 
-This step supports **consistency** by helping prevent duplicate financial operations. It also relies on a unique database constraint to prevent two requests from successfully creating the same key.
+3. I locked both accounts in order, starting with the account with the lowest ID, to prevent opposite transfers from waiting on each other and causing a deadlock.
+
+4. I read the account balances only after locking them to prevent other transactions from changing the balances unexpectedly and causing a lost update.
+
+5. I updated both account balances, added a DEBIT and a CREDIT entry to the ledger, and marked the transaction as COMPLETED, ensuring that all changes happened together or were rolled back if something went wrong.
 
 **Step 2: Resolve the account IDs**
 
@@ -46,7 +50,7 @@ Reading the balances after acquiring the locks is essential. If the function rea
 
 The locks help prevent this lost-update problem for the protected account rows. The balance check also helps prevent a customer from spending more money than is available.
 
-This step primarily protects **isolation and consistency**.
+This step primarily protects **isolation and consistency** this was the mistake I demonstrated in Experiment 1 (500 read by both sessions, final balance 100).
 
 **Step 5: Update balances, record the ledger entries and complete the transaction**
 
@@ -66,13 +70,13 @@ The output file recorded several important results:
 
 - **After `COMMIT`:** The balances were 400 and 600. The transfer was saved, and the changes remained in place after the transaction finished.
 - **After `ROLLBACK`:** The balances returned to 500 and 500. This showed that PostgreSQL could undo the changes made within an uncommitted transaction.
-- **Failed transaction:** The `rows_for_key` result was 0, confirming that the failed operation left no transaction row for that idempotency key.
-- **Idempotent transaction:** The `rows_for_key` result was 1, showing that repeating the same request did not create a second transaction row.
+- **Failed transaction:** The `rows_for_key` result was 0. The row inserted at the start of the call was rolled back too, because the whole call failed (that is atomicity in action) confirming that the failed operation left no transaction row for that idempotency key.
+- **"Idempotent" transaction:** The `rows_for_key` result was 1, showing that repeating the same request did not create a second transaction row.
 - **After the `SAVEPOINT` demonstration:** The balances were 490 and 510. This showed how a savepoint could be used to roll back part of a transaction while retaining earlier changes that were still valid.
 
 These results helped me appreciate the value of controlling exactly when changes become permanent. If a transfer encounters an error, the database should not leave customers wondering where their money went.
 
-I also noticed gaps in the generated transaction IDs: 206100 and 206102 were missing. This is normal when PostgreSQL identity columns or sequences allocate IDs to operations that later fail or are rolled back. Sequence values are not normally returned just because a transaction rolls back, so gaps do not necessarily indicate missing transactions or corrupted financial records.
+I also noticed gaps in the generated transaction IDs: 206100 and 206102 were missing. Demo 2 used 206099 and was rolled back, and Demo 4 returned 206101, so 206100 and 206102 were burned by the rolled-back and failed calls. This is normal when PostgreSQL identity columns or sequences allocate IDs to operations that later fail or are rolled back. Sequence values are not normally returned just because a transaction rolls back, so gaps do not necessarily indicate missing transactions or corrupted financial records.
 
 The important lesson is that transaction IDs are identifiers, not a guarantee that every number must correspond to a committed row.
 
@@ -92,7 +96,7 @@ This was particularly important because the database did not necessarily raise a
 
 **The problem:** Concurrent transactions needed to access and change the same account safely.
 
-**What I observed:** Transaction B had to wait while transaction A held the row lock. Once A completed, B continued and saw the updated balance of 100.
+**What I observed:** B hung, C showed wait_event_type = Lock, then B saw 100.0000 after A committed. One withdrawal succeeded and the other could be refused.
 
 This showed me that PostgreSQL's locking mechanism can coordinate competing requests instead of allowing them to overwrite each other's changes.
 
@@ -102,7 +106,7 @@ This showed me that PostgreSQL's locking mechanism can coordinate competing requ
 
 **The problem:** A transaction read a balance, another transaction changed and committed it, and the first transaction read the same row again.
 
-**What I observed:** The first read returned 500, while the second returned 400. Under `READ COMMITTED`, each statement can see a newer committed version of the data.
+**What I observed:** A read 500, then returned 400 in the same transaction under READ COMMITTED.
 
 This helped me understand why a transaction cannot assume that a value will remain unchanged simply because it read that value earlier.
 
@@ -112,9 +116,7 @@ This helped me understand why a transaction cannot assume that a value will rema
 
 **The problem:** A transaction attempted to update a row that had been changed by a concurrent transaction under serializable isolation.
 
-**What I observed:** The transaction's snapshot continued to show 500, but its update failed with the message:
-
-`could not serialize access due to concurrent update`
+**What I observed:** Session A’s balance remained at `500`, but its update failed with the error “could not serialize access due to concurrent update.” The application must handle this error and retry the transaction.
 
 Unlike the non-repeatable read experiment, PostgreSQL did not simply allow the conflicting update to proceed. It rejected the transaction because the concurrent changes could not be safely reconciled with the serializable execution it was trying to guarantee.
 
@@ -128,7 +130,7 @@ Unlike the non-repeatable read experiment, PostgreSQL did not simply allow the c
 
 `deadlock detected`
 
-Each transaction was waiting for a lock held by the other, leaving neither able to continue.
+I found that locking accounts in a fixed order solved the deadlock problem, reducing failed transfers from 51 to zero in my `pgbench` test.
 
 **The fix:** I changed the locking strategy so that accounts are always locked in ascending account-ID order. This consistent order reduces the chance of two transfers waiting on each other in a cycle.
 
@@ -145,7 +147,7 @@ The results were:
 | Ordered locking | 2,000/2,000 | 0 | 3,515.17 |
 | Unordered locking | 1,949/2,000 | 51 | 48.87 |
 
-The ordered run completed all 2,000 transfers without failures and achieved 3,515.17 transactions per second. In contrast, the unordered run completed 1,949 transfers, failed 51, and achieved 48.87 transactions per second.
+The ordered run completed all 2,000 transfers without failures and achieved 3,515.17 transactions per second. In contrast, the unordered run completed 1,949 transfers, 51 failed (each deadlock victim rolled back completely, so the 51 failed transfers left no partial changes.), and achieved 48.87 transactions per second.
 
 This was a significant difference. It showed me how inconsistent locking can create serious contention and deadlocks, reducing the amount of useful work the database can complete. The ordered approach made the workload much more successful in this particular test.
 
@@ -155,10 +157,10 @@ The integrity checks also returned the following results:
 
 | Integrity check | Result |
 |---|---:|
-| Total ledger amount | `1000000001000.0000` |
-| First integrity discrepancy count | 0 |
-| Second integrity discrepancy count | 0 |
-| Third integrity discrepancy count | 0 |
+| Total ledger amount | `1000000001000.0000` | (This was identical before and after the ordered run and after the unordered run.)
+| unbalanced_transactions | 0 |
+| mismatched_accounts | 0 |
+| stuck_pending_transactions | 0 |
 
 All three discrepancy counts were zero in the output files. This indicated that the checks found no discrepancies in the conditions they tested, and the reported total ledger amount remained consistent with the test's expected result.
 
@@ -168,17 +170,21 @@ The important distinction is that **a failed transfer is not automatically an in
 
 ## 6. My Own Experiment: Lock Timeout
 
-For my own experiment, I examined the effect of setting `lock_timeout` to two seconds.
+For my own experiment, I examined the effect of setting `lock_timeout` to `2s`.
 
 **My prediction:** I expected PostgreSQL to stop waiting when a transaction could not obtain a required lock within two seconds. Instead of allowing a blocked operation to wait indefinitely, the database would cancel the affected statement and return an error.
 
-**What happened:** With the two-second timeout configured, an operation that waited too long for a lock was expected to fail with a lock-timeout error rather than continue waiting beyond the configured limit. The application could then catch the error and decide whether to retry or explain the problem to the user.
+**Observations:** 
+- In Session A, I began a transaction and used FOR UPDATE to lock Alice’s row, preventing other sessions from modifying it until the lock was released. 
+- In session B I set lock_timeout = '2s', started a transaction and asked for the same lock.
+- After about 2 seconds B printed ERROR: canceling statement due to lock timeout, with CONTEXT: while locking tuple (1,54) in relation "accounts", and B’s transaction was aborted (prompt carbon_db=!#)
+- My prediction was correct.
 
 **Why it matters:** In a real application, a transaction waiting too long can hold up other work and leave users wondering whether their payments are going through. A lock timeout provides a limit on that waiting time and gives the application an opportunity to recover more gracefully.
 
 However, a timeout is not the same as a fix for the underlying locking problem. The application still needs sensible locking rules, proper transaction handling and a controlled retry strategy.
 
-*Note: The exact observed error text and elapsed time should be copied from the actual lock-timeout output before this section is submitted as experimental evidence.*
+The exact observed error text and elapsed time should be copied from the actual lock-timeout output before this section is submitted as experimental evidence.*
 
 ## 7. Limitations
 
@@ -198,7 +204,11 @@ The retry mechanism must also preserve idempotency so that a repeated request ca
 
 ## 8. Reflection
 
-The biggest surprise for me was that PostgreSQL could allow two withdrawals to finish without reporting an error and still leave an incorrect balance. Before these experiments, I thought that if a query completed successfully, the result would automatically be safe. I now understand that successful execution and correct business behaviour are not always the same thing.
+My first `pgbench` test failed because the account numbers were 1 digit short, and I also discovered that the integrity check ran too slowly until I added the `idx_ledger_account_created` index.
+
+The unordered run was roughly 70 times slower (48.87 tps against 3,515.17).
+
+My biggest surprise was that PostgreSQL allow two withdrawals to finish without reporting an error and still leave an incorrect balance. Before these experiments, I thought that if a query completed successfully, the result would automatically be safe. I now understand that successful execution and correct business behaviour are not always the same thing.
 
 I was also surprised by how much the order of acquiring locks could affect the outcome. Using a consistent account-locking order made the stress test far more successful, while inconsistent ordering caused failures and a sharp drop in throughput. This helped me see that concurrency control is not just about adding locks; it is about designing a clear and consistent way for transactions to acquire them.
 
