@@ -1,0 +1,37 @@
+MIT 8103 Portfolio 4 - Carbon Case Study
+Step 6: Indexes and Query Performance
+
+Database: carbon_nosql
+Collection: audit_events
+
+BEFORE INDEXING
+- Query: customer_id = 100, sorted by ts descending
+- Execution time: 90 ms
+- Documents examined: 100,000
+- Index keys examined: 0
+- Documents returned: 24
+- Query plan: COLLSCAN followed by SORT
+
+AFTER INDEXING
+- Execution time: 2 ms
+- Documents examined: 24
+- Index keys examined: 24
+- Documents returned: 24
+- Query plan: IXSCAN using customer_id_ts_desc, followed by FETCH
+
+INDEXES CREATED
+1. customer_id_ts_desc — customer_id ascending, ts descending
+2. event_type_ts_desc — event_type ascending, ts descending
+3. unique_kyc_customer_id — unique index on customer_id
+4. login_session_ttl — created_at index with expireAfterSeconds: 3600
+
+VERIFICATION
+- All four index creation operations completed.
+- The unique KYC customer index was confirmed.
+- The login session TTL index was confirmed.
+- The script ended with: CARBON INDEX AND EXPLAIN SCRIPT COMPLETED
+
+OBSERVED PERFORMANCE
+Execution time decreased from 90 ms to 2 ms in this run, approximately a 97.8% reduction. Actual timings may vary between runs.
+
+Note: This is a concise record of the terminal output, not a verbatim copy of the full explain() output.
