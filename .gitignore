@@ -1,0 +1,13 @@
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Local credentials and private configuration
+secrets/
+*.pem
+*.key
+
+# Dependencies and temporary files
+node_modules/
