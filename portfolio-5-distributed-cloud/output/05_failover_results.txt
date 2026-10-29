@@ -1,0 +1,24 @@
+Experiment 5: Failover
+
+Action:
+Stopped the original primary container, carbon-pg-primary.
+
+Promotion:
+Executed pg_promote(true, 30) on carbon-pg-replica.
+Result: true
+
+Verification after promotion:
+pg_is_in_recovery(): false
+Promoted primary WAL LSN: 0/11BDB360
+
+Interpretation:
+The replica was successfully promoted and was no longer in recovery mode.
+
+Safety note:
+The original primary was left stopped to avoid bringing up two writable
+nodes and creating a split-brain risk.
+
+Evidence limitation:
+The recorded results do not establish the exact data-loss window (RPO),
+recovery duration (RTO), or sequence-number change. These must not be
+claimed as measured results without additional evidence.

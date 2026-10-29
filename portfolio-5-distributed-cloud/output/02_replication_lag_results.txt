@@ -1,0 +1,19 @@
+Experiment 2: Replication Lag and Stale Reads
+
+Setup:
+PostgreSQL 16 primary and replica in an isolated temporary Docker lab.
+Replication mode: asynchronous streaming.
+
+Results:
+- Primary and replica were confirmed connected in streaming mode.
+- Test marker: exp2-test-20261029
+- The marker was visible on the replica after the primary insert.
+- Primary WAL position at measurement: 0/F027C60
+- Replica replay position: 0/F027C60
+- Measured replay gap: 0 bytes
+
+Conclusion:
+The replica had caught up at the time of measurement. No stale-read interval was directly observed, so this experiment does not establish the duration or frequency of stale reads. Asynchronous replication can still permit a recently committed write to be temporarily absent from a replica.
+
+Limitation:
+A controlled lagging interval was not captured. The measured WAL gap is a point-in-time measurement, not a time-based replication-lag measurement.

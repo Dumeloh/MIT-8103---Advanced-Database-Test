@@ -11,3 +11,7 @@ secrets/
 
 # Dependencies and temporary files
 node_modules/
+
+# Portfolio 5 database dumps and local credentials
+carbon_dump.sql
+*.dump

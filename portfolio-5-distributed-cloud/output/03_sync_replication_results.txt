@@ -1,0 +1,44 @@
+﻿# Experiment 3: Asynchronous and Synchronous Replication
+
+## Environment
+- Isolated PostgreSQL 16 Docker lab.
+- Primary: `carbon-exp2-primary`
+- Replica: `carbon-exp2-replica`
+- Database: `carbon_db`
+- The original portfolio containers were not used for this experiment.
+
+## Initial configuration
+- `synchronous_standby_names` was initially empty.
+- `pg_stat_replication` reported `state=streaming` and `sync_state=async`.
+
+## Synchronous configuration
+- Configured `synchronous_standby_names` as `FIRST 1 (walreceiver)`.
+- Reloaded the PostgreSQL configuration.
+- `pg_stat_replication` subsequently reported `state=streaming` and `sync_state=sync`.
+- At the recorded measurement, `sent_lsn`, `write_lsn`, `flush_lsn`, and `replay_lsn` were all `0/F027C60`.
+
+## Successful synchronous write
+- Marker: `exp3-sync-20261029-001`
+- PowerShell `Measure-Command` duration: `236.8052 ms`.
+- This duration includes Docker and `psql` connection/setup overhead; it is not an isolated database commit-latency measurement.
+- The marker was subsequently visible on the replica.
+
+## Standby availability and timeout test
+- Temporarily stopped `carbon-exp2-replica`.
+- Issued an insert into `exp3_sync_test` using a five-second `statement_timeout`.
+- The command returned the error `canceling statement due to statement timeout`, with context indicating that PostgreSQL was inserting an index tuple into `exp3_sync_test_marker_key`.
+- A subsequent query found the test marker on the primary:
+  `exp3-sync-timeout-test-20261029`
+- After restarting the replica, `pg_stat_replication` reported `state=streaming` and `sync_state=sync`.
+- A query executed directly against the replica using `-h localhost` found the same test marker, with timestamp `2026-10-29 11:15:14.337494+00`.
+- Therefore, the marker was eventually present on both primary and replica, despite the timeout error. The precise outcome and timing of the timed-out operation are inconclusive; this evidence does not establish that the insert was rolled back or that it committed during the original attempt.
+- The earlier marker `exp3-sync-standby-down-001` was also observed on both servers after recovery.
+
+## Conclusion
+Synchronous replication was configured and verified using `pg_stat_replication`, and successful test markers were observed on the replica. The availability test produced a statement-timeout error while the standby was unavailable, but the corresponding marker was later found on both servers. The experiment therefore demonstrates the observed timeout and subsequent replication recovery, but does not establish the exact commit outcome of the timed-out operation.
+
+## Limitations
+- No isolated database commit-latency measurement was captured.
+- No controlled measurement of the duration of a blocked synchronous write was captured.
+- The timed-out test marker's presence on both servers means the outcome cannot be described as a confirmed rollback.
+- The experiment did not measure RPO or RTO.

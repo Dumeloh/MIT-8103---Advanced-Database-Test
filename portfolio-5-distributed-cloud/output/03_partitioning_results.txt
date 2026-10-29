@@ -1,0 +1,22 @@
+Experiment 4: Hash Partitioning
+Source row count: 404,162
+Partitioned row count: 404,162
+
+Partition row counts:
+ledger_entries_p0: 103,146
+ledger_entries_p1: 100,901
+ledger_entries_p2: 102,145
+ledger_entries_p3: 97,970
+
+Partition pruning:
+The query filtering account_id = 1001 scanned ledger_entries_p0 only.
+
+EXPLAIN ANALYZE:
+Execution time: approximately 12.343 ms
+Rows returned: 57
+Rows removed by filter: 103,089
+Shared buffer hits: 1,064
+
+Result:
+The source and partitioned row counts matched. The recorded query plan
+demonstrated partition pruning for the account_id filter.
