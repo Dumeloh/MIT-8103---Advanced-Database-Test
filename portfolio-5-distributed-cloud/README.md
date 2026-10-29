@@ -1,10 +1,10 @@
-# MIT 8103 Portfolio 5: Distributed and Cloud Databases
+﻿# MIT 8103 Portfolio 5: Distributed and Cloud Databases
 
 ## Carbon Case Study
 
-**Project:** MIT 8103 â€” Advanced Database Test
-**Portfolio:** 5 â€” Distributed and Cloud Database Exercise
-**Database technologies:** PostgreSQL, Docker, MongoDB Atlas
+**Project:** MIT 8103 â€” Advanced Database Test  
+**Portfolio:** 5 â€” Distributed and Cloud Database Exercise  
+**Database technologies:** PostgreSQL, Docker, MongoDB Atlas  
 **Environment:** Windows, PowerShell, Docker, and Antigravity IDE
 
 ---
@@ -15,7 +15,7 @@ This portfolio explores distributed database concepts using a Carbon fintech cas
 
 The project demonstrates how database architecture can support read scaling, data distribution, availability, and recovery from database failures.
 
-The work completed so far includes:
+The work completed includes:
 
 - Running PostgreSQL primary and replica containers using Docker.
 - Verifying PostgreSQL streaming replication.
@@ -23,15 +23,15 @@ The work completed so far includes:
 - Comparing row counts between the primary and replica.
 - Measuring a point-in-time WAL replay gap in an isolated asynchronous replication lab.
 - Configuring and verifying synchronous replication in an isolated temporary lab.
-- Inserting test markers and verifying their eventual visibility on the replica.
+- Inserting test markers and verifying their subsequent visibility on the replica.
 - Creating and evaluating a hash-partitioned ledger table.
 - Promoting the replica after stopping the original primary.
 - Creating a MongoDB Atlas Free cluster and attempting the cloud verification script.
 - Recording replication, partitioning, and failover results in the output directory.
-- Capturing the Atlas cluster overview showing its three-node replica set and AWS Paris region.
+- Capturing the Atlas cluster overview showing its three-node replica-set topology and AWS Paris region.
 - Creating a proposed production architecture diagram as an additional contribution.
 
-A stale-read interval was not directly observed. Experiment 3 verified synchronous standby configuration and a successful replicated write. Its standby-unavailability test returned a statement-timeout error, but the corresponding test marker was subsequently found on both the primary and replica. The exact transaction outcome during the interruption remains inconclusive. Successful MongoDB Atlas authentication and cloud read/write verification also remain unresolved.
+A controlled stale-read interval was captured in the separate temporary experiment lab: while WAL replay was paused, the primary contained one row in `replication_lag_demo` and the replica contained zero; after replay resumed, the replica contained one row. The earlier zero-byte WAL-gap measurement was a separate point-in-time observation. Experiment 3 verified synchronous standby configuration and a successful replicated write, while its standby-unavailability test remains inconclusive. Successful MongoDB Atlas authentication and cloud read/write verification remain unresolved.
 
 These limitations are documented rather than presented as successful experiments.
 
@@ -134,7 +134,7 @@ Understand how asynchronous replication can produce stale reads when the replica
 
 ### Setup
 
-Because the original replica had been promoted during Experiment 5, a separate temporary PostgreSQL 16 primaryâ€“replica environment was created for this experiment. The temporary lab used separate containers, ports, and database volumes.
+Because the original replica had been promoted during Experiment 5, a separate temporary PostgreSQL 16 primary-replica environment was created for this experiment. The temporary lab used separate containers, ports, and database volumes.
 
 The temporary primary and replica were confirmed to be connected using asynchronous streaming replication. The temporary primary's `pg_stat_replication` output reported:
 
@@ -156,7 +156,7 @@ The marker was subsequently queried successfully on the replica:
 | Replica query result | One row returned |
 | Recorded creation time | `2026-10-29 09:46:53.141979+00` |
 
-The marker's visibility confirms that the replica had received and replayed the relevant change by the time it was queried. It does not demonstrate a stale-read interval.
+This initial marker check confirmed eventual visibility after replication caught up, but did not itself demonstrate a stale-read interval. A separate controlled pause-and-resume test below captured the stale read directly.
 
 ### WAL replay measurement
 
@@ -176,13 +176,13 @@ The zero-byte replay gap means the replica had caught up to the primary's measur
 
 Asynchronous replication does not generally require the primary to wait for the replica to confirm receipt and replay of every transaction before acknowledging a commit. Therefore, a recently committed transaction may temporarily be absent from a replica while WAL changes are in transit or awaiting replay.
 
-In this experiment, the marker was visible on the replica and the measured WAL replay gap was zero. **A stale-read interval was not directly observed.** The measurements therefore do not establish how long or how often stale reads occur.
+In the initial point-in-time measurement, the marker was visible on the replica and the measured WAL replay gap was zero. That measurement did not capture lag. A separate controlled test paused WAL replay on the temporary replica, inserted one row into `replication_lag_demo` on the temporary primary, and observed a count of 1 on the primary versus 0 on the replica. After replay resumed, the replica count became 1. Screenshots `screenshots/05_stale_read.png` and `screenshots/06_caught_up.png` record these states. This demonstrates a stale read during the controlled replay pause; it does not estimate typical production lag duration.
 
 For a fintech ledger such as Carbon, consistency-sensitive readsâ€”such as confirming a transfer or displaying a newly updated balanceâ€”should be routed to the primary or handled using an explicitly designed consistency mechanism. Replica reads are more suitable for reporting and other workloads that can tolerate some delay.
 
 **Result:** Asynchronous streaming replication was verified, the test marker was visible on the replica, and a zero-byte point-in-time replay gap was measured.
 
-**Limitation:** A controlled stale-read interval was not captured. The measured WAL gap is a point-in-time measurement, not a time-based measurement of replication lag.
+**Limitation:** The earlier WAL-gap measurement was only a point-in-time measurement. The later controlled pause-and-resume test did capture a stale-read interval, but it does not measure typical production lag duration.
 
 **Evidence:** `output/02_replication_lag_results.txt`
 
@@ -452,7 +452,7 @@ The captured Atlas cluster overview showed:
 
 This screenshot confirms the cluster overview and displayed topology. It does not, by itself, prove that a majority write or secondary read succeeded.
 
-### Verification status
+### Verification status and connection failures
 
 An Atlas connection attempt using `mongosh` returned an authentication failure:
 
@@ -460,7 +460,9 @@ An Atlas connection attempt using `mongosh` returned an authentication failure:
 MongoServerError: bad auth : authentication failed
 ```
 
-Therefore, successful authentication and the cloud verification script's database operations have not been established by the available evidence.
+A later connection attempt also failed during the TLS handshake with a fatal internal-error alert (alert 80). Neither attempt established a successful authenticated database session. The cause of the TLS failure was not established.
+
+Therefore, successful Atlas authentication and the cloud verification script's database operations have not been established by the available evidence. Troubleshooting was stopped, and the failure is documented as a limitation.
 
 The intended cloud experiment is to:
 
@@ -476,7 +478,7 @@ A majority write acknowledgement does not guarantee that every secondary has alr
 
 The existing collections and documents must not be dropped or recreated for this experiment.
 
-**Status:** The cluster overview was captured. Successful authentication, majority-write verification, and secondary-read verification remain unresolved.
+**Status:** The cluster overview was captured. Authentication, majority-write verification, and secondary-read verification remain unresolved. The TLS connection failure also remains unresolved; its cause is unknown.
 
 ---
 
@@ -544,13 +546,13 @@ The original primary remains stopped following replica promotion. It must not be
 The experiments produced the following evidence:
 
 - Streaming replication and primary/replica row-count checks were successful.
-- Experiment 2 verified asynchronous streaming, observed the test marker on the replica, and recorded a zero-byte WAL replay gap at the measurement time. No stale-read interval was directly observed.
+- Experiment 2 verified asynchronous streaming and recorded a zero-byte WAL replay gap during an initial point-in-time check. A separate controlled replay-pause test then observed one row on the primary and zero on the replica; after replay resumed, the replica count became one. The screenshots record both states.
 - Experiment 3 configured and verified synchronous replication and observed a successful test write on the replica.
 - Experiment 3's standby-unavailability test returned a statement-timeout error. The associated marker was subsequently found on both primary and replica, but the exact outcome during the interruption remains inconclusive.
 - The hash-partitioning experiment completed, and the recorded query demonstrated partition pruning.
 - The replica was successfully promoted after the original primary was stopped.
 - The Atlas cluster overview showed a three-node replica set in AWS Paris.
-- Atlas authentication failed during the recorded connection attempt.
+- Atlas authentication failed during the recorded connection attempt, and a later TLS handshake attempt also failed.
 - Exact RPO, RTO, sequence-number change, and post-promotion application-write results have not been established.
 - No isolated database commit-latency benchmark or conclusive measurement of a blocked synchronous write was captured.
 - A proposed production architecture diagram was created, but its proposed production capabilities have not all been implemented or tested.
@@ -582,12 +584,12 @@ The following project scripts and configuration files are part of the implementa
 - `primary-init/02_create_tables.sql`
 - `primary-init/03_seed_data.sql`
 - `replica-entrypoint.sh`
-- `sql/01_primary_checks.sql`
-- `sql/02_replica_checks.sql`
-- `sql/03_partitioning.sql`
-- `sql/04_atlas_cloud_check.js`
+- `01_primary_checks.sql`
+- `02_replica_checks.sql`
+- `03_partitioning.sql`
+- `04_atlas_cloud_check.js`
 
-The saved output files include replication, partitioning, failover, and Atlas cloud-check results. Their contents should be reviewed alongside the relevant scripts and screenshots.
+The output directory contains `01_primary_checks.txt`, `02_replica_checks.txt`, `03_partitioning_results.txt`, and `04_atlas_cloud_check.txt`, alongside the replication-lag, synchronous-replication, and failover reports. Important provenance note: the newly generated primary and replica health-check reports were run against the separate temporary lab containers `carbon-exp2-primary` and `carbon-exp2-replica`, not the original Portfolio 5 primary and promoted replica. They document the lab's observed state and must not be interpreted as health checks of the original cluster. The partitioning report records matching source and partitioned row counts and pruning to `ledger_entries_p0`. The Atlas output records an authentication failure; successful cloud database operations have not been verified.
 
 **Reproduction commands still need to be verified against the current `docker-compose.yml` and script contents before adding exact start, connection, or execution commands.** This avoids accidentally restarting the original primary or running commands against the host PostgreSQL service.
 
@@ -601,7 +603,7 @@ Destructive Docker volume removal must not be used as a routine cleanup command 
 
 This portfolio demonstrates several important distributed database trade-offs in the context of a fintech platform.
 
-Streaming replication can support read scaling and recovery, but asynchronous operation can introduce replication lag. Matching row counts provide useful point-in-time evidence but do not prove that stale reads cannot occur. In Experiment 2, the replica had caught up at the time of measurement; a stale-read interval was not captured.
+Streaming replication can support read scaling and recovery, but asynchronous operation can introduce replication lag. Matching row counts provide useful point-in-time evidence but do not prove that stale reads cannot occur. Experiment 2 included an initial zero-gap measurement and a separate controlled replay-pause test that captured a stale read: the primary count was one while the replica count was zero, then the replica count became one after replay resumed.
 
 Experiment 3 demonstrated that PostgreSQL can be configured to recognize a synchronous standby. The successful test row was visible on the replica. During the standby-unavailability test, the insert command returned a statement-timeout error, but the corresponding marker was subsequently found on both servers. The evidence does not establish the precise commit outcome during the interruption. The measured command duration included connection and execution overhead, so it cannot be used as a direct measure of database commit latency.
 
@@ -609,7 +611,7 @@ Hash partitioning can reduce the amount of data examined by suitable queries. In
 
 The failover experiment demonstrated successful promotion of the replica. However, a complete production assessment would also measure recovery time, possible data loss, sequence behaviour, and successful application writes after promotion.
 
-The Atlas cluster overview confirms the displayed three-node replica-set topology and region. The failed authentication attempt means that majority-write and secondary-read behaviour cannot yet be concluded from the available evidence.
+The Atlas cluster overview confirms the displayed three-node replica-set topology and region. The failed authentication and subsequent TLS connection failure mean that majority-write and secondary-read behaviour cannot be concluded from the available evidence. The controlled stale-read screenshots now provide evidence of a stale read during a deliberate WAL replay pause, followed by catch-up after replay resumed.
 
 The proposed production architecture diagram extends the project by illustrating how the database components could fit into a larger resilient fintech platform. It also highlights the difference between a working database experiment and a production deployment, where failover orchestration, backup recovery, security, monitoring, and multi-zone infrastructure must be implemented and tested.
 
@@ -618,3 +620,5 @@ The proposed production architecture diagram extends the project by illustrating
 AI assistance was used to help draft configuration files, SQL checks, experiment procedures, and explanatory documentation. It was also used to assist with the proposed production architecture diagram and the explanation of its design.
 
 The student remains responsible for reviewing, executing, validating, and understanding the work. All reported measurements and screenshots should be based on actual experiment results. Incomplete tests and limitations are explicitly identified rather than presented as successful experiments. The proposed architecture is identified as a design contribution and is not represented as a fully implemented production system.
+
+
