@@ -1,9 +1,9 @@
-﻿# MIT 8103 Portfolio 5: Distributed and Cloud Databases
+# MIT 8103 Portfolio 5: Distributed and Cloud Databases
 
 ## Carbon Case Study
 
-**Project:** MIT 8103 â€” Advanced Database Test  
-**Portfolio:** 5 â€” Distributed and Cloud Database Exercise  
+**Project:** MIT 8103 — Advanced Database Test  
+**Portfolio:** 5 — Distributed and Cloud Database Exercise  
 **Database technologies:** PostgreSQL, Docker, MongoDB Atlas  
 **Environment:** Windows, PowerShell, Docker, and Antigravity IDE
 
@@ -11,71 +11,54 @@
 
 ## 1. Project Overview
 
-This portfolio explores distributed database concepts using a Carbon fintech case study. The practical work covers PostgreSQL streaming replication, primary and replica responsibilities, replica consistency, synchronous and asynchronous replication, hash partitioning, failover, and a cloud database deployment using MongoDB Atlas.
+This portfolio explores distributed database concepts through a Carbon fintech case study. The practical work covers PostgreSQL streaming replication, primary and replica responsibilities, replica consistency, synchronous and asynchronous replication, hash partitioning, failover, and a cloud database deployment using MongoDB Atlas.
 
-The project demonstrates how database architecture can support read scaling, data distribution, availability, and recovery from database failures.
-
-The work completed includes:
+The work includes:
 
 - Running PostgreSQL primary and replica containers using Docker.
-- Verifying PostgreSQL streaming replication.
-- Executing primary and replica verification scripts.
-- Comparing row counts between the primary and replica.
+- Verifying streaming replication and checking primary/replica row counts.
 - Measuring a point-in-time WAL replay gap in an isolated asynchronous replication lab.
+- Capturing a controlled stale-read interval by pausing and resuming WAL replay.
 - Configuring and verifying synchronous replication in an isolated temporary lab.
-- Inserting test markers and verifying their subsequent visibility on the replica.
-- Creating and evaluating a hash-partitioned ledger table.
-- Promoting the replica after stopping the original primary.
+- Recording the outcome of a standby-unavailability timeout test without assuming that the timed-out transaction rolled back.
+- Creating and evaluating a four-partition hash-partitioned ledger table.
+- Promoting a replica after stopping the original primary.
 - Creating a MongoDB Atlas Free cluster and attempting the cloud verification script.
-- Recording replication, partitioning, and failover results in the output directory.
-- Capturing the Atlas cluster overview showing its three-node replica-set topology and AWS Paris region.
-- Creating a proposed production architecture diagram as an additional contribution.
+- Producing a proposed production architecture diagram as an additional contribution.
 
-A controlled stale-read interval was captured in the separate temporary experiment lab: while WAL replay was paused, the primary contained one row in `replication_lag_demo` and the replica contained zero; after replay resumed, the replica contained one row. The earlier zero-byte WAL-gap measurement was a separate point-in-time observation. Experiment 3 verified synchronous standby configuration and a successful replicated write, while its standby-unavailability test remains inconclusive. Successful MongoDB Atlas authentication and cloud read/write verification remain unresolved.
-
-These limitations are documented rather than presented as successful experiments.
+A controlled stale-read interval was captured in the separate temporary experiment lab: while WAL replay was paused, the primary contained one row in `replication_lag_demo` and the replica contained zero; after replay resumed, the replica contained one row. An earlier zero-byte WAL-gap measurement was a separate point-in-time observation. Experiment 3 verified synchronous standby configuration and a successful replicated write, but the standby-unavailability test remains inconclusive. Successful MongoDB Atlas authentication and cloud read/write verification remain unresolved. These limitations are documented rather than presented as successful experiments.
 
 ---
 
-## 2. Architecture
-
-The practical environment contains the following components:
+## 2. Architecture and Environment
 
 | Component | Role | Observed status |
 |---|---|---|
-| PostgreSQL primary | Accepts writes and generates changes for replication | Used during the replication experiment; subsequently stopped for failover |
+| PostgreSQL primary | Accepts writes and generates changes for replication | Used during the original replication experiment; subsequently stopped for failover |
 | PostgreSQL replica | Receives streamed WAL records and supports read-only queries during recovery | Streaming replication verified; subsequently promoted |
-| Docker | Runs the isolated PostgreSQL database containers | Used successfully |
+| Docker | Runs isolated PostgreSQL database containers | Used successfully |
 | Hash-partitioned ledger table | Demonstrates hash partitioning and partition pruning | Experiment completed |
 | MongoDB Atlas `Carbon-nosql` | Cloud database component | Cluster created; authentication verification remains unresolved |
 
-The original PostgreSQL containers were named `carbon-pg-primary` and `carbon-pg-replica`. They used PostgreSQL 16 inside Docker. The host PostgreSQL 18 installation was separate from the Docker environment.
+The original PostgreSQL containers were named `carbon-pg-primary` and `carbon-pg-replica`. They used PostgreSQL 16 inside Docker. The original database was `carbon_db`, using the database user `carbon`, with host ports 5433 (primary) and 5434 (replica). The host PostgreSQL 18 service on port 5432 was separate from the Docker containers.
 
-The original PostgreSQL database was `carbon_db`, using the database user `carbon`. The original host ports were 5433 for the primary and 5434 for the replica. The host PostgreSQL service on port 5432 was separate from these Docker containers.
+A separate temporary Docker lab was used for replication experiments, with containers `carbon-exp2-primary` and `carbon-exp2-replica`, host ports 5435 and 5436, and separate Docker volumes. This lab was used for asynchronous replication, the controlled stale-read experiment, and the synchronous replication experiment.
 
-During the original replication experiment, the primary and replica were connected. During the failover experiment, the original primary was stopped and the replica was successfully promoted.
-
-A separate temporary Docker lab was subsequently created for replication experiments, using the container names `carbon-exp2-primary` and `carbon-exp2-replica`, host ports 5435 and 5436, and separate Docker volumes. This isolated lab was used to measure asynchronous replication and configure synchronous replication without restarting the promoted original replica or altering the original database volumes.
-
-**Safety note:** The original primary must remain stopped until a safe rejoin or reconfiguration procedure is performed. Restarting it as a writable primary while the promoted replica is also writable could create split-brain operation.
+**Safety warning:** The original primary was stopped and its replica was promoted. Do not restart the former primary as a writable server while the promoted node is writable. Doing so without a safe rejoin or reconfiguration procedure risks split-brain operation. The temporary lab's synchronous replication settings may also differ from its original configuration; verify its state before reusing it.
 
 ---
 
 ## 3. Workload Routing
 
-The intended workload placement is:
-
 | Workload | Intended destination | Reason |
 |---|---|---|
-| Transaction creation and updates | PostgreSQL primary | The primary accepts writes and generates changes for replication |
+| Transaction creation and updates | PostgreSQL primary | The primary accepts writes and generates WAL for replication |
 | Read-only reporting | PostgreSQL replica | Can offload eligible reads from the primary |
-| Consistency-sensitive reads | Primary, or an appropriate consistency-aware route | Reduces the risk of reading stale data |
+| Consistency-sensitive reads | Primary or a specifically designed consistency-aware route | Reduces the risk of reading stale data |
 | Ledger partitioning experiment | Hash-partitioned PostgreSQL table | Demonstrates partition pruning |
-| Document-oriented cloud data | MongoDB Atlas | Supports the cloud database component |
+| Document-oriented cloud data | MongoDB Atlas | Provides the cloud database component |
 
-A replica can be streaming and still be behind the primary. Applications must not assume that a successful replication connection guarantees that every read returns the latest committed state.
-
-This table describes the intended workload-routing design; it does not imply that every application-level route has been implemented.
+A replica can be streaming and still be behind the primary. Applications must not assume that a healthy replication connection guarantees every replica read returns the latest committed state. This table describes intended workload placement; it does not imply that application-level routing has been implemented.
 
 ---
 
@@ -87,14 +70,14 @@ Verify that the PostgreSQL replica receives changes from the primary and operate
 
 ### Implementation and verification
 
-The original primary and replica containers were running during the replication experiment. The following checks were completed:
+The original primary and replica containers were running during the replication experiment. The recorded checks showed:
 
-- The primary reported a connected replication client.
-- The replication state was `streaming`.
-- The synchronization state was `async`.
-- The replica reported that it was in recovery mode.
-- Hot standby and read-only behaviour were verified.
-- The primary and replica verification scripts executed successfully.
+- A connected replication client on the primary.
+- Replication state `streaming`.
+- Synchronization state `async`.
+- The replica in recovery mode.
+- Hot standby and read-only behaviour.
+- Successful execution of primary and replica verification scripts.
 
 The recorded primary replication status included:
 
@@ -105,22 +88,16 @@ The recorded primary replication status included:
 | Synchronization state | `async` |
 | Replica client address | `172.18.0.3` |
 
-The replica reported:
-
-- `pg_is_in_recovery() = true`
-- `hot_standby = on`
-- `transaction_read_only = on`
+The replica reported `pg_is_in_recovery() = true`, `hot_standby = on`, and `transaction_read_only = on`.
 
 ### Row-count consistency
-
-The following counts matched between the primary and replica during the checks:
 
 | Table | Primary count | Replica count |
 |---|---:|---:|
 | `customers` | 5,001 | 5,001 |
 | `transactions` | 206,096 | 206,096 |
 
-These matching counts demonstrate consistency for the checked tables at the time of observation. They do not prove that replication can never lag or that every table is always synchronized.
+These counts matched at the time of observation. They do not prove that replication can never lag or that every table is always synchronized.
 
 **Result:** Streaming replication and the recorded row-count comparison were successful.
 
@@ -130,75 +107,33 @@ These matching counts demonstrate consistency for the checked tables at the time
 
 ### Objective
 
-Understand how asynchronous replication can produce stale reads when the replica has not yet replayed the latest changes, and measure the replication state at the time of observation.
+Observe how asynchronous replication can produce stale reads when the replica has not replayed the latest changes.
 
-### Setup
+### Setup and point-in-time WAL measurement
 
-Because the original replica had been promoted during Experiment 5, a separate temporary PostgreSQL 16 primary-replica environment was created for this experiment. The temporary lab used separate containers, ports, and database volumes.
+Because the original replica had been promoted during the failover experiment, a separate temporary PostgreSQL 16 primary/replica environment was used. The temporary primary reported `state = streaming` and `sync_state = async`.
 
-The temporary primary and replica were confirmed to be connected using asynchronous streaming replication. The temporary primary's `pg_stat_replication` output reported:
+An initial test marker, `exp2-test-20261029`, was inserted into `exp2_stale_read_test` on the primary and was subsequently visible on the replica. At the time of an initial WAL measurement, the primary WAL position and replica replay position were both `0/F027C60`, giving a measured gap of `0 bytes`. This was a point-in-time measurement and did not capture lag.
 
-| Property | Observed value |
-|---|---|
-| Application name | `walreceiver` |
-| Replication state | `streaming` |
-| Synchronization state | `async` |
+### Controlled stale-read test
 
-### Test marker
+A separate controlled test paused WAL replay on the temporary replica, inserted one row into `replication_lag_demo` on the primary, and observed a count of 1 on the primary versus 0 on the replica. After replay resumed, the replica count became 1. Screenshots `screenshots/05_stale_read.png` and `screenshots/06_caught_up.png` record the stale and caught-up states.
 
-A test table named `exp2_stale_read_test` was used in the temporary lab. The marker `exp2-test-20261029` was inserted on the primary.
+This demonstrates a stale read during a deliberately controlled replay pause. It does not estimate typical production replication lag or its duration.
 
-The marker was subsequently queried successfully on the replica:
+For a fintech ledger, consistency-sensitive reads—such as confirming a transfer or displaying a newly updated balance—should use the primary or an explicitly designed consistency mechanism. Replica reads are more suitable for reporting workloads that can tolerate some delay.
 
-| Property | Observed result |
-|---|---|
-| Test marker | `exp2-test-20261029` |
-| Replica query result | One row returned |
-| Recorded creation time | `2026-10-29 09:46:53.141979+00` |
+**Result:** Asynchronous streaming replication was verified, a zero-byte WAL replay gap was measured at one point in time, and a separate controlled pause-and-resume test demonstrated stale-read behaviour and subsequent catch-up.
 
-This initial marker check confirmed eventual visibility after replication caught up, but did not itself demonstrate a stale-read interval. A separate controlled pause-and-resume test below captured the stale read directly.
-
-### WAL replay measurement
-
-A point-in-time WAL measurement was taken from the temporary primary. The primary's current WAL position and the replica's replay position were compared using `pg_stat_replication`.
-
-| Measurement | Recorded value |
-|---|---|
-| Primary WAL position at measurement | `0/F027C60` |
-| Replica replay position | `0/F027C60` |
-| Replication state | `streaming` |
-| Synchronization state | `async` |
-| Measured replay gap | `0 bytes` |
-
-The zero-byte replay gap means the replica had caught up to the primary's measured WAL position at that instant.
-
-### Interpretation
-
-Asynchronous replication does not generally require the primary to wait for the replica to confirm receipt and replay of every transaction before acknowledging a commit. Therefore, a recently committed transaction may temporarily be absent from a replica while WAL changes are in transit or awaiting replay.
-
-In the initial point-in-time measurement, the marker was visible on the replica and the measured WAL replay gap was zero. That measurement did not capture lag. A separate controlled test paused WAL replay on the temporary replica, inserted one row into `replication_lag_demo` on the temporary primary, and observed a count of 1 on the primary versus 0 on the replica. After replay resumed, the replica count became 1. Screenshots `screenshots/05_stale_read.png` and `screenshots/06_caught_up.png` record these states. This demonstrates a stale read during the controlled replay pause; it does not estimate typical production lag duration.
-
-For a fintech ledger such as Carbon, consistency-sensitive readsâ€”such as confirming a transfer or displaying a newly updated balanceâ€”should be routed to the primary or handled using an explicitly designed consistency mechanism. Replica reads are more suitable for reporting and other workloads that can tolerate some delay.
-
-**Result:** Asynchronous streaming replication was verified, the test marker was visible on the replica, and a zero-byte point-in-time replay gap was measured.
-
-**Limitation:** The earlier WAL-gap measurement was only a point-in-time measurement. The later controlled pause-and-resume test did capture a stale-read interval, but it does not measure typical production lag duration.
-
-**Evidence:** `output/02_replication_lag_results.txt`
+**Evidence:** `output/02_replication_lag_results.txt`, `screenshots/05_stale_read.png`, and `screenshots/06_caught_up.png`.
 
 ---
 
 ## 6. Experiment 3: Asynchronous and Synchronous Replication
 
-### Objective
+### Initial configuration
 
-Compare the consistency, durability, latency, and availability implications of asynchronous and synchronous replication.
-
-### Initial asynchronous configuration
-
-The isolated temporary lab initially operated with asynchronous replication.
-
-The following settings and observations were recorded:
+The isolated temporary lab initially used asynchronous replication. The recorded settings and status were:
 
 | Property | Observed value |
 |---|---|
@@ -208,123 +143,56 @@ The following settings and observations were recorded:
 | Synchronization state | `async` |
 | Standby application name | `walreceiver` |
 
-The setting `synchronous_commit = on` alone does not establish that synchronous standby acknowledgement is configured. The empty `synchronous_standby_names` setting and `sync_state = async` confirmed that the standby was not initially configured as synchronous.
+`synchronous_commit = on` alone does not establish synchronous standby acknowledgement. The empty `synchronous_standby_names` setting and `sync_state = async` showed that the standby was not initially configured as synchronous.
 
-### Synchronous replication configuration
+### Synchronous configuration
 
-Synchronous replication was configured in the isolated temporary primary using:
+The temporary primary was configured with:
 
 ```sql
 ALTER SYSTEM SET synchronous_standby_names = 'FIRST 1 (walreceiver)';
-```
-
-The PostgreSQL configuration was then reloaded:
-
-```sql
 SELECT pg_reload_conf();
 ```
 
-The reload returned `true`, confirming that the configuration reload succeeded.
-
-The primary's replication status subsequently showed:
-
-| Property | Observed value |
-|---|---|
-| Standby application name | `walreceiver` |
-| Replication state | `streaming` |
-| Synchronization state | `sync` |
-| Primary sent LSN | `0/F027C60` |
-| Standby write LSN | `0/F027C60` |
-| Standby flush LSN | `0/F027C60` |
-| Standby replay LSN | `0/F027C60` |
-
-This confirmed that PostgreSQL recognized `walreceiver` as the synchronous standby and that the recorded WAL positions matched at the time of measurement.
+The reload returned `true`. Afterwards, `pg_stat_replication` reported `state = streaming` and `sync_state = sync`. The recorded sent, write, flush, and replay LSN values were all `0/F027C60` at the time of measurement.
 
 ### Successful synchronous write
 
-A dedicated table named `exp3_sync_test` was created in the temporary lab.
-
-The successful test marker was:
-
-```sql
-INSERT INTO exp3_sync_test (marker)
-VALUES ('exp3-sync-20261029-001');
-```
-
-The row was subsequently queried successfully on the replica.
-
-The write was timed using PowerShell's `Measure-Command`.
+The marker `exp3-sync-20261029-001` was inserted into `exp3_sync_test` and subsequently queried successfully on the replica.
 
 | Measurement | Recorded value |
 |---|---|
 | Test marker | `exp3-sync-20261029-001` |
-| Total command duration | `236.8052 ms` |
+| Total PowerShell command duration | `236.8052 ms` |
 | Replica query | One row returned |
 
-The measured duration includes Docker command execution and `psql` connection and setup overhead. It is **not an isolated database commit-latency measurement** and should not be treated as a direct comparison of asynchronous and synchronous commit performance.
+The duration includes Docker command execution and `psql` connection/setup overhead. It is not an isolated database commit-latency measurement and should not be treated as a direct asynchronous-versus-synchronous performance comparison.
 
 ### Standby availability and timeout test
 
-To investigate the availability trade-off, the temporary replica container `carbon-exp2-replica` was stopped while synchronous replication was configured.
+The temporary replica container `carbon-exp2-replica` was stopped while synchronous replication was configured. A write was issued with a five-second statement timeout using the marker `exp3-sync-timeout-test-20261029`.
 
-A write command was issued using a five-second statement timeout. The intended test marker was:
+The command returned a statement-timeout error while inserting an index tuple in `exp3_sync_test_marker_key`. A subsequent primary query found the marker. After the replica restarted, `pg_stat_replication` again reported `state = streaming` and `sync_state = sync`; a query against the replica also found the same marker, with timestamp `2026-10-29 11:15:14.337494+00`. The earlier marker `exp3-sync-standby-down-001` was also observed on both servers after recovery.
 
-`exp3-sync-timeout-test-20261029`
-
-The command returned the following error:
-
-```text
-ERROR: canceling statement due to statement timeout
-CONTEXT: while inserting index tuple (0,4) in relation "exp3_sync_test_marker_key"
-```
-
-A subsequent query against the primary found the marker:
-
-| Property | Observed result |
-|---|---|
-| Marker | `exp3-sync-timeout-test-20261029` |
-| Primary query | Marker found |
-| Recorded creation time | `2026-10-29 11:15:14.337494+00` |
-
-After restarting the replica, `pg_stat_replication` reported:
-
-| Property | Observed value |
-|---|---|
-| Replication state | `streaming` |
-| Synchronization state | `sync` |
-
-A query executed directly against the replica using `-h localhost` also found `exp3-sync-timeout-test-20261029`, with timestamp `2026-10-29 11:15:14.337494+00`.
-
-The earlier marker `exp3-sync-standby-down-001` was also observed on both primary and replica after recovery.
-
-**Interpretation:** The timeout error was observed, and the corresponding test marker was subsequently found on both servers. The exact outcome and timing of the timed-out operation are inconclusive. The evidence does not establish that the insert was rolled back, nor does it establish precisely when the row became committed or replicated.
+**Interpretation:** The timeout error was observed and the associated marker was later found on both servers. The exact outcome and timing of the timed-out operation are inconclusive. The evidence does not establish that the insert was rolled back or precisely when the row committed or replicated.
 
 ### Conceptual comparison
 
-| Consideration | Asynchronous | Synchronous |
+| Consideration | Asynchronous replication | Synchronous replication |
 |---|---|---|
 | Commit latency | Generally lower because standby acknowledgement is not required | Can be higher because the configured acknowledgement is required |
-| Dependence on standby response | Lower | Depends on the synchronous configuration and acknowledgement level |
-| Risk of losing recent acknowledged changes during failover | Higher | Can be reduced when the appropriate standby acknowledgement and failover procedures are used |
+| Dependence on standby response | Lower | Depends on synchronous configuration and acknowledgement level |
+| Risk of losing recent acknowledged changes during failover | Generally higher | Can be reduced with suitable acknowledgement and failover procedures |
 | Behaviour during standby failure | Writes may continue while the primary remains operational | Writes requiring synchronous acknowledgement may wait or block |
 | Availability trade-off | Can favour write availability | Can sacrifice write availability when the required standby is unavailable |
 
-### Carbon ledger implications
+For a fintech ledger, protecting acknowledged transactions is important. A production design could use synchronous replication for critical commits where latency and availability trade-offs are acceptable, alongside durable backups, monitoring, and tested recovery procedures.
 
-For a fintech ledger, preserving acknowledged financial transactions is a high priority. A production design could use synchronous replication for critical commits where latency and availability trade-offs are acceptable, alongside durable backups, monitoring, and a tested recovery process.
+**Result:** Synchronous standby configuration was verified, a successful test row was observed on the replica, and the timeout and recovery were documented.
 
-The experiment verified asynchronous mode, configured and verified synchronous mode, and confirmed that a successful test row was visible on the replica. The standby-unavailability test produced a statement-timeout error, but the marker was subsequently found on both servers. No definitive conclusion can be made about the exact commit outcome during the interruption.
+**Limitations:** The command duration is not isolated commit latency; the timeout outcome remains inconclusive; no comparative latency benchmark or conclusive blocked-write duration was captured.
 
-**Result:** Synchronous standby configuration was verified, a successful test write was observed on the replica, and the timeout and subsequent replication recovery were documented.
-
-**Limitations:**
-
-- The recorded `236.8052 ms` is the total command duration, not isolated database commit latency.
-- The exact outcome of the timed-out operation remains inconclusive.
-- No comparative asynchronous-versus-synchronous latency benchmark was completed.
-- No isolated database commit-latency measurement was captured.
-
-**Evidence:** `output/03_sync_replication_results.txt`
+**Evidence:** `output/03_sync_replication_results.txt` and the corresponding synchronous replication screenshots.
 
 ---
 
@@ -332,18 +200,14 @@ The experiment verified asynchronous mode, configured and verified synchronous m
 
 ### Objective
 
-Evaluate hash partitioning as a method of distributing ledger records and reducing the amount of data examined by suitable queries.
+Evaluate hash partitioning and determine whether a query on the partition key can prune irrelevant partitions.
 
-### Results
-
-The partitioning experiment completed successfully.
+### Row counts
 
 | Measurement | Row count |
 |---|---:|
 | Source rows | 404,162 |
 | Partitioned rows | 404,162 |
-
-The recorded counts for the four hash partitions were:
 
 | Partition | Row count |
 |---|---:|
@@ -353,13 +217,11 @@ The recorded counts for the four hash partitions were:
 | `ledger_entries_p3` | 97,970 |
 | **Total** | **404,162** |
 
-The source and partitioned row counts matched.
+The source and partitioned counts matched.
 
 ### Partition pruning
 
-The query filtering on `account_id = 1001` scanned `ledger_entries_p0` only, demonstrating partition pruning for the recorded query.
-
-The recorded `EXPLAIN ANALYZE` results included:
+The recorded query filtering on `account_id = 1001` scanned `ledger_entries_p0` only, demonstrating partition pruning for that query.
 
 | Measurement | Recorded value |
 |---|---:|
@@ -368,78 +230,51 @@ The recorded `EXPLAIN ANALYZE` results included:
 | Rows removed by filter | 103,089 |
 | Shared buffer hits | 1,064 |
 
-These measurements describe the recorded query execution and are not a general performance guarantee.
+These values describe the recorded execution, not a general performance guarantee. Hash partitioning organises data within a PostgreSQL database; it does not itself distribute data across independent database servers.
 
-### Interpretation
+**Result:** Row counts matched and the recorded query demonstrated partition pruning.
 
-Hash partitioning distributes rows among partitions according to the partition key. When a query contains a compatible restriction on that key, PostgreSQL may be able to exclude irrelevant partitions from the scan.
-
-Partitioning is not the same as distributing data across independent database servers. It organizes data within the PostgreSQL database and does not, by itself, provide cross-server sharding.
-
-**Result:** The partitioned row count matched the source count, and the recorded query demonstrated partition pruning.
+**Evidence:** `output/03_partitioning_results.txt` and the partitioning screenshot.
 
 ---
 
 ## 8. Experiment 5: Failover
 
-### Objective
-
-Explore recovery when the PostgreSQL primary becomes unavailable and verify promotion of the replica.
-
 ### Procedure and observations
 
-The original primary container, `carbon-pg-primary`, was stopped.
-
-The following promotion command was executed against the replica:
+The original primary container `carbon-pg-primary` was stopped. The following command was executed against the replica:
 
 ```sql
 SELECT pg_promote(true, 30);
 ```
 
-The command returned `true`, indicating successful promotion.
+It returned `true`. After promotion, the recorded verification query showed `pg_is_in_recovery() = false` and a promoted-primary WAL LSN of `0/11BDB360`.
 
-After promotion, the recorded verification query returned:
+This demonstrates successful promotion of the replica after the original primary was stopped.
 
-| Property | Observed value |
-|---|---|
-| `pg_is_in_recovery()` | `false` |
-| Promoted primary WAL LSN | `0/11BDB360` |
+### Limitations and operational implications
 
-The value `false` for `pg_is_in_recovery()` confirms that the promoted server was no longer operating as a standby in recovery mode.
+The original primary was left stopped to avoid two writable nodes and the risk of split-brain operation. The available evidence does not establish:
 
-### Interpretation and limitations
-
-The experiment demonstrates successful promotion of the replica after the original primary was stopped.
-
-The original primary was left stopped to avoid starting two writable nodes and creating a split-brain risk.
-
-The available evidence does not establish:
-
-- The exact recovery time objective (RTO).
-- The exact recovery point objective (RPO).
+- Exact recovery time objective (RTO).
+- Exact recovery point objective (RPO).
 - The precise number of transactions potentially lost.
 - A measured sequence-number change.
 - Successful application-level writes after promotion.
 
-These results must not be claimed without further evidence.
+These values must not be claimed without additional evidence. In production, failover should be coordinated through tested orchestration and fencing, with monitoring, backups, recovery validation, and a controlled procedure for rejoining the former primary.
 
-In production, failover should be coordinated by a tested orchestration and fencing process, with monitoring, backups, recovery validation, and a controlled method for rejoining the former primary.
+**Result:** Replica promotion succeeded; recovery-time, data-loss, sequence-number, and post-promotion application-write measurements remain unverified.
 
-**Result:** Replica promotion succeeded. Recovery-time, data-loss, and sequence-number measurements remain unverified.
+**Evidence:** `output/05_failover_results.txt` and the failover screenshots.
 
 ---
 
 ## 9. Experiment 6: MongoDB Atlas Cloud Replication
 
-### Objective
-
-Verify the Atlas deployment and test a majority-acknowledged write followed by a secondary read.
-
 ### Cluster observations
 
-The Atlas cluster is named `Carbon-nosql`.
-
-The captured Atlas cluster overview showed:
+The Atlas cluster is named `Carbon-nosql`. The captured cluster overview showed:
 
 | Property | Observed value |
 |---|---|
@@ -447,178 +282,136 @@ The captured Atlas cluster overview showed:
 | Cloud provider | AWS |
 | Region | Paris (`eu-west-3`) |
 | Topology | Replica set |
-| Node count displayed | 3 |
+| Displayed node count | 3 |
 | Cluster status | Green status indicator |
 
-This screenshot confirms the cluster overview and displayed topology. It does not, by itself, prove that a majority write or secondary read succeeded.
+The screenshot confirms the displayed cluster overview and topology. It does not prove successful database writes or reads.
 
-### Verification status and connection failures
+### Verification status
 
-An Atlas connection attempt using `mongosh` returned an authentication failure:
+A `mongosh` connection attempt returned:
 
 ```text
 MongoServerError: bad auth : authentication failed
 ```
 
-A later connection attempt also failed during the TLS handshake with a fatal internal-error alert (alert 80). Neither attempt established a successful authenticated database session. The cause of the TLS failure was not established.
+A later attempt failed during the TLS handshake with a fatal internal-error alert (alert 80). Neither attempt established a successful authenticated database session, and the cause of the TLS failure was not established.
 
-Therefore, successful Atlas authentication and the cloud verification script's database operations have not been established by the available evidence. Troubleshooting was stopped, and the failure is documented as a limitation.
-
-The intended cloud experiment is to:
-
-1. Confirm the connection string and permitted network access.
-2. Keep credentials outside the source code and repository.
-3. Inspect the replica-set information returned by the server.
-4. Insert a uniquely identifiable test document with majority write concern.
-5. Read the document from the primary.
-6. Attempt a secondary read when an eligible secondary is available.
-7. Record actual results and clean up only the uniquely identified test document when appropriate.
+The intended cloud test is to inspect the server topology, insert a uniquely identifiable test document with majority write concern, read it from the primary, attempt a secondary read when an eligible secondary is available, record the actual results, and clean up only the uniquely identified test document if appropriate. Credentials must remain outside source code and the repository. Existing collections and documents must not be dropped or recreated for this test.
 
 A majority write acknowledgement does not guarantee that every secondary has already applied the write. Secondary-read results must be observed rather than assumed.
 
-The existing collections and documents must not be dropped or recreated for this experiment.
-
 **Status:** The cluster overview was captured. Authentication, majority-write verification, and secondary-read verification remain unresolved. The TLS connection failure also remains unresolved; its cause is unknown.
 
+**Evidence:** `output/04_atlas_cloud_check.txt`, `screenshots/Oluwarotimi_Oluwafemi_301930838_10_atlas_cluster.png`, and `screenshots/Oluwarotimi_Oluwafemi_301930838_11_atlas_check_output.png`.
+
 ---
 
-## 10. Additional Work: Proposed Production Architecture
+## 10. Additional Contribution: Proposed Production Architecture
 
-### Objective
+A production architecture diagram was created as an additional contribution.
 
-Extend the Carbon case study with a proposed production architecture showing how a fintech platform could be designed for higher availability, scalability, security, and disaster recovery.
-
-### Contribution
-
-A production architecture diagram was created as an additional piece of work for this portfolio.
-
-**Diagram filename:** `Oluwarotimi_Oluwafemi_301930838_06_carbon_production_architecture.png`
-
+**Filename:** `Oluwarotimi_Oluwafemi_301930838_06_carbon_production_architecture.png`  
 **Project-relative path:** `screenshots/Oluwarotimi_Oluwafemi_301930838_06_carbon_production_architecture.png`
 
-The diagram presents a proposed architecture with the following components:
+The proposed design includes client applications, a CDN/WAF, TLS protection, load balancing, application servers across three proposed availability zones, PostgreSQL primary/replica roles, a three-node MongoDB Atlas replica set, backups and point-in-time recovery, monitoring and alerting, secrets management, network controls, role-based access, and CI/CD/infrastructure management.
 
-- **Client applications:** Mobile, customer web, merchant, and administrative portals.
-- **Traffic protection:** A CDN and web application firewall (WAF), with TLS protection and traffic filtering.
-- **Load balancing:** Distributes requests across application servers.
-- **Multi-zone application deployment:** Application servers across three proposed availability zones to reduce dependence on one zone.
-- **PostgreSQL transactional database:** A primary for writes and a replica for eligible read-only reporting, connected through streaming replication.
-- **MongoDB Atlas:** A three-node replica-set design for document-oriented data, such as KYC profiles and audit events.
-- **Backups and disaster recovery:** Automated backups, point-in-time recovery, and cross-region backup storage.
-- **Monitoring and observability:** Database and application metrics, logs, alerts, and replication monitoring.
-- **Security:** Encryption in transit, secrets management, network controls, and role-based access.
-- **CI/CD and infrastructure management:** Automated deployment and infrastructure configuration.
+The design routes transactional writes to the PostgreSQL primary and eligible reporting reads to a replica, while recognising that consistency-sensitive reads must account for replication lag. MongoDB Atlas is shown as a separate document-data component; this does not imply automatic cross-database transactions or consistency guarantees between PostgreSQL and MongoDB.
 
-### Design rationale
+**This is a proposed production design, not a claim that the current lab implements the full architecture.** The practical work did not establish automatic production failover, a three-zone application deployment, automated backup restoration, production-grade monitoring, or successful Atlas majority-write and secondary-read verification.
 
-A fintech platform needs to protect the consistency of financial transactions while also supporting reporting, document-oriented data, availability, and recovery.
-
-The proposed design assigns transactional writes to PostgreSQL's primary and routes eligible reporting queries to a replica. This can reduce reporting load on the primary, but replica reads must account for replication lag when recent changes need to be visible.
-
-MongoDB Atlas is shown as a separate document-data component. Its proposed role is to support document-oriented information and appropriate read workloads without implying that cross-database transactions or consistency guarantees are automatically provided between PostgreSQL and MongoDB.
-
-Multiple application availability zones, managed failover, backups, and monitoring could improve resilience. However, these capabilities require appropriate infrastructure, configuration, operational procedures, and testing.
-
-### Relationship to the implemented project
-
-This diagram is a **proposed production design**, not a claim that the current Docker lab implements the complete architecture.
-
-The practical project verified PostgreSQL streaming replication, tested replica promotion, evaluated hash partitioning, and created an Atlas cluster. It did not establish that the following proposed capabilities are implemented and tested:
-
-- Automatic, orchestrated production failover.
-- Three-zone application deployment.
-- Automated backup restoration and point-in-time recovery.
-- Production-grade monitoring and alerting.
-- Successful Atlas majority-write and secondary-read verification.
-
-The original primary remains stopped following replica promotion. It must not be restarted as a writable primary without a safe rejoin or reconfiguration procedure.
-
-**Result:** The production architecture diagram provides an additional design contribution that connects the portfolio's database experiments to a possible production deployment. Its proposed features are distinguished from the capabilities verified in the practical environment.
-
-**Evidence:** `screenshots/Oluwarotimi_Oluwafemi_301930838_06_carbon_production_architecture.png`
+**Evidence:** `screenshots/Oluwarotimi_Oluwafemi_301930838_06_carbon_production_architecture.png`.
 
 ---
 
-## 11. Limitations and Reproduction
+## 11. Distributed Database Design for Carbon
 
-### Current status
+### Proposed multi-server design
 
-The experiments produced the following evidence:
+For a larger Carbon deployment, I would partition ledger transactions by `account_id` and distribute account data across multiple PostgreSQL shards. This key supports common account-level balance and transaction-history queries and can keep related account records together. A hash-based distribution could spread accounts across shards, although routing and rebalancing would need to be planned as data volume grows.
 
-- Streaming replication and primary/replica row-count checks were successful.
-- Experiment 2 verified asynchronous streaming and recorded a zero-byte WAL replay gap during an initial point-in-time check. A separate controlled replay-pause test then observed one row on the primary and zero on the replica; after replay resumed, the replica count became one. The screenshots record both states.
-- Experiment 3 configured and verified synchronous replication and observed a successful test write on the replica.
-- Experiment 3's standby-unavailability test returned a statement-timeout error. The associated marker was subsequently found on both primary and replica, but the exact outcome during the interruption remains inconclusive.
-- The hash-partitioning experiment completed, and the recorded query demonstrated partition pruning.
-- The replica was successfully promoted after the original primary was stopped.
-- The Atlas cluster overview showed a three-node replica set in AWS Paris.
-- Atlas authentication failed during the recorded connection attempt, and a later TLS handshake attempt also failed.
+Transfers between accounts on different shards are more complex than transfers within one shard. They require a coordinated transaction strategy, durable transfer records, idempotency controls, and reconciliation so that retries or partial failures do not cause duplicate debits or credits. The design must preserve ledger integrity if one shard becomes unavailable during a transfer.
+
+Queries that do not include the shard key may need to contact multiple shards and combine results. This increases network traffic and query latency. Reporting workloads may therefore need carefully designed aggregation or separate reporting mechanisms.
+
+Hot shards are another risk. An account with unusually high transaction volume can overload its assigned shard. Monitoring, workload limits, and an appropriate distribution strategy can help, but a single highly active account may still need special handling.
+
+MongoDB sharding differs from PostgreSQL streaming replication and table partitioning. MongoDB sharding distributes documents across shards according to a shard key, whereas a MongoDB replica set maintains copies of data for availability and redundancy. PostgreSQL streaming replication copies WAL changes to a standby, while PostgreSQL table partitioning organises data within a database and does not itself distribute it across independent servers.
+
+This multi-shard design is a proposal only; a multi-shard deployment was not implemented or benchmarked in this portfolio.
+
+---
+
+## 12. Limitations, Reproduction, and Safety
+
+### Summary of results
+
+- Streaming replication and primary/replica row-count checks were successful at the time recorded.
+- Experiment 2 measured a zero-byte WAL replay gap at one point in time and separately captured a stale read during a controlled replay pause, followed by catch-up.
+- Experiment 3 configured and verified synchronous replication and observed a successful test write on the replica. The standby-unavailability test timed out, and its exact commit outcome remains inconclusive.
+- Hash partitioning preserved the recorded row count and demonstrated pruning for the `account_id = 1001` query.
+- Replica promotion succeeded after the original primary was stopped.
+- The Atlas overview showed a three-node replica set in AWS Paris, but authentication and cloud read/write verification remain unresolved.
 - Exact RPO, RTO, sequence-number change, and post-promotion application-write results have not been established.
-- No isolated database commit-latency benchmark or conclusive measurement of a blocked synchronous write was captured.
-- A proposed production architecture diagram was created, but its proposed production capabilities have not all been implemented or tested.
+- No isolated database commit-latency benchmark or conclusive blocked synchronous-write duration was captured.
+- The production architecture and multi-shard design are proposals, not fully implemented production capabilities.
 
-### Environment and safety
+### File and evidence map
 
-The original PostgreSQL Docker environment used PostgreSQL 16 with the primary and replica on host ports 5433 and 5434. The host PostgreSQL 18 service on port 5432 was separate.
-
-The original primary is stopped, and the original replica has been promoted. Do not restart the original primary as a writable node without a safe rejoin or reconfiguration procedure.
-
-The temporary experiment lab uses the separate containers `carbon-exp2-primary` and `carbon-exp2-replica` on host ports 5435 and 5436. It has separate Docker volumes and is independent of the original database volumes.
-
-Experiment 3 changed the temporary primary's synchronous standby configuration. The temporary primary should be returned to the intended asynchronous configuration before reproducing Experiment 2, or the active configuration should be explicitly documented. Do not assume the temporary lab remains in its original configuration.
-
-### Reproduction
-
-The original replication checks should be reproduced only after the primary/replica environment has been safely recreated or reconfigured. Do not assume the original replication topology is still active after failover.
-
-The Experiment 2 measurements were taken in the isolated temporary lab. The recorded evidence is saved in `output/02_replication_lag_results.txt`.
-
-Experiment 3's synchronous replication evidence is saved in `output/03_sync_replication_results.txt`.
-
-Before starting the services, validate the Docker Compose configuration and confirm that Docker is operational. Execute database commands against the intended isolated Docker database, not the host PostgreSQL service.
-
-The following project scripts and configuration files are part of the implementation:
+The `portfolio-5-distributed-cloud` directory contains:
 
 - `docker-compose.yml`
+- `replica-entrypoint.sh`
 - `primary-init/01_replication.sh`
 - `primary-init/02_create_tables.sql`
 - `primary-init/03_seed_data.sql`
-- `replica-entrypoint.sh`
 - `01_primary_checks.sql`
 - `02_replica_checks.sql`
 - `03_partitioning.sql`
 - `04_atlas_cloud_check.js`
+- `output/01_primary_checks.txt`
+- `output/02_replica_checks.txt`
+- `output/02_replication_lag_results.txt`
+- `output/03_partitioning_results.txt`
+- `output/03_sync_replication_results.txt`
+- `output/04_atlas_cloud_check.txt`
+- `output/05_failover_results.txt`
+- Screenshots of the Docker containers, row counts, primary/replica checks, replication status, stale-read/catch-up test, synchronous replication tests, partitioning, failover, Atlas overview, Atlas script output, and proposed architecture.
 
-The output directory contains `01_primary_checks.txt`, `02_replica_checks.txt`, `03_partitioning_results.txt`, and `04_atlas_cloud_check.txt`, alongside the replication-lag, synchronous-replication, and failover reports. Important provenance note: the newly generated primary and replica health-check reports were run against the separate temporary lab containers `carbon-exp2-primary` and `carbon-exp2-replica`, not the original Portfolio 5 primary and promoted replica. They document the lab's observed state and must not be interpreted as health checks of the original cluster. The partitioning report records matching source and partitioned row counts and pruning to `ledger_entries_p0`. The Atlas output records an authentication failure; successful cloud database operations have not been verified.
+**Evidence provenance:** The recorded `output/01_primary_checks.txt` and `output/02_replica_checks.txt` reports were generated against the separate temporary lab containers `carbon-exp2-primary` and `carbon-exp2-replica`, not the original Portfolio 5 primary and promoted replica. They must not be interpreted as health checks of the original cluster.
 
-**Reproduction commands still need to be verified against the current `docker-compose.yml` and script contents before adding exact start, connection, or execution commands.** This avoids accidentally restarting the original primary or running commands against the host PostgreSQL service.
+### Reproduction guidance
 
-Destructive Docker volume removal must not be used as a routine cleanup command because it may permanently remove experiment data.
+The original topology has changed since the failover experiment: the former primary is stopped and the replica has been promoted. Therefore, do not start the original Compose stack blindly or assume it still has its original primary/standby roles.
+
+Before running any reproduction commands:
+
+1. Review `docker-compose.yml` and confirm the exact service names, ports, volume names, and initialization behaviour.
+2. Confirm Docker is operational and identify which lab is being used.
+3. Use the isolated temporary lab for the stale-read and synchronous-replication experiments; do not reuse or remove volumes unless their contents and purpose are understood.
+4. Confirm the temporary lab's current synchronous replication settings before repeating Experiment 2.
+5. Run SQL checks only against the intended Docker database, not the host PostgreSQL 18 service on port 5432.
+6. Keep Atlas credentials in a local environment variable or other secrets mechanism; do not commit a connection string or password.
+7. Preserve the existing data and evidence. Do not use `docker compose down -v` as routine cleanup because it removes volumes and can permanently delete experiment data.
+
+The SQL and JavaScript scripts listed above are included in the project. Exact start, connection, and execution commands should be confirmed against the current Compose configuration before use; this README intentionally does not prescribe a potentially unsafe command that could restart the former primary or target the wrong database.
 
 ---
 
-## 12. Reflection and AI-Use Declaration
+## 13. Reflection and AI-Use Declaration
 
 ### Reflection
 
-This portfolio demonstrates several important distributed database trade-offs in the context of a fintech platform.
+This portfolio demonstrates important distributed-database trade-offs in the context of a fintech platform. Streaming replication can support read scaling and recovery, but asynchronous operation can introduce replication lag. Matching row counts provide useful point-in-time evidence but do not prove that stale reads cannot occur. The controlled replay-pause test captured a stale read and subsequent catch-up.
 
-Streaming replication can support read scaling and recovery, but asynchronous operation can introduce replication lag. Matching row counts provide useful point-in-time evidence but do not prove that stale reads cannot occur. Experiment 2 included an initial zero-gap measurement and a separate controlled replay-pause test that captured a stale read: the primary count was one while the replica count was zero, then the replica count became one after replay resumed.
+Experiment 3 demonstrated that PostgreSQL can be configured to recognise a synchronous standby. A successful test row was visible on the replica. During the standby-unavailability test, the insert command returned a statement-timeout error, but the marker was later found on both servers. The available evidence does not establish the precise commit outcome during the interruption. The recorded command duration included connection and execution overhead and is not a direct database commit-latency measurement.
 
-Experiment 3 demonstrated that PostgreSQL can be configured to recognize a synchronous standby. The successful test row was visible on the replica. During the standby-unavailability test, the insert command returned a statement-timeout error, but the corresponding marker was subsequently found on both servers. The evidence does not establish the precise commit outcome during the interruption. The measured command duration included connection and execution overhead, so it cannot be used as a direct measure of database commit latency.
+Hash partitioning can reduce the amount of data examined by suitable queries. The source and partitioned row counts matched, and the recorded query demonstrated partition pruning. Partitioning alone does not distribute data across independent servers.
 
-Hash partitioning can reduce the amount of data examined by suitable queries. In this experiment, the source and partitioned counts matched, and the recorded query demonstrated partition pruning. Partitioning alone does not distribute data across independent servers.
+The failover experiment demonstrated successful promotion of the replica. A complete production assessment would additionally measure recovery time, possible data loss, sequence behaviour, and successful application writes after promotion.
 
-The failover experiment demonstrated successful promotion of the replica. However, a complete production assessment would also measure recovery time, possible data loss, sequence behaviour, and successful application writes after promotion.
-
-The Atlas cluster overview confirms the displayed three-node replica-set topology and region. The failed authentication and subsequent TLS connection failure mean that majority-write and secondary-read behaviour cannot be concluded from the available evidence. The controlled stale-read screenshots now provide evidence of a stale read during a deliberate WAL replay pause, followed by catch-up after replay resumed.
-
-The proposed production architecture diagram extends the project by illustrating how the database components could fit into a larger resilient fintech platform. It also highlights the difference between a working database experiment and a production deployment, where failover orchestration, backup recovery, security, monitoring, and multi-zone infrastructure must be implemented and tested.
+The Atlas overview confirms the displayed three-node replica-set topology and region, but the failed authentication and subsequent TLS connection failure mean that majority-write and secondary-read behaviour cannot be concluded from the available evidence. The proposed architecture and multi-shard design connect the practical experiments to a possible larger fintech deployment while distinguishing implemented results from proposed capabilities.
 
 ### AI-use declaration
 
-AI assistance was used to help draft configuration files, SQL checks, experiment procedures, and explanatory documentation. It was also used to assist with the proposed production architecture diagram and the explanation of its design.
-
-The student remains responsible for reviewing, executing, validating, and understanding the work. All reported measurements and screenshots should be based on actual experiment results. Incomplete tests and limitations are explicitly identified rather than presented as successful experiments. The proposed architecture is identified as a design contribution and is not represented as a fully implemented production system.
-
-
+AI assistance was used to help draft configuration files, SQL checks, experiment procedures, and explanatory documentation, and to assist with the proposed production architecture and its explanation. The student remains responsible for reviewing, executing, validating, and understanding the work. Measurements and screenshots are reported according to the available experiment evidence. Incomplete tests and limitations are explicitly identified rather than presented as successful experiments.
