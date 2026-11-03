@@ -1,22 +1,22 @@
 # Portfolio 1: Relational Database Design & Schema Architecture
 
-**Course:** MIT 8103 – Advanced Database Systems  
-**Institution:** Miva Open University — Master of Information Technology (MIT)  
-**Assessment:** Continuous Assessment (Virtual Lab Portfolio 1)  
-**System:** Carbon / NairaPay Core Fintech Ledger System (`carbon_db`)  
-**Database Engine:** PostgreSQL 18 | **Management Tool:** pgAdmin 4  
-**Author:** Oluwafemi Emmanuel Oluwarotimi ([@Dumeloh](https://github.com/Dumeloh))  
+**Course:** MIT 8103 â€“ Advanced Database Systems
+**Institution:** Miva Open University â€” Master of Information Technology (MIT)
+**Assessment:** Continuous Assessment (Virtual Lab Portfolio 1)
+**System:** Carbon (`carbon_db`)
+**Database Engine:** PostgreSQL 18 | **Management Tool:** pgAdmin 4
+**Author:** Oluwafemi Emmanuel Oluwarotimi ([@Dumeloh](https://github.com/Dumeloh))
 
 ---
 
 ## 1. Executive Summary
 
-Portfolio 1 implements a production-grade, highly normalized relational database schema for **Carbon / NairaPay**, an enterprise financial technology (fintech) digital banking and ledger application. In high-velocity transaction systems, data integrity, regulatory compliance, and auditability cannot be compromised. The system enforces strict financial invariants:
+Portfolio 1 implements a production-grade, highly normalized relational database schema for **Carbon**, an enterprise financial technology (fintech) digital banking and ledger application. In high-velocity transaction systems, data integrity, regulatory compliance, and auditability cannot be compromised. The system enforces strict financial invariants:
 
 - **Double-Entry Bookkeeping:** Every financial movement generates immutable debit and credit ledger entries, guaranteeing that money is neither created nor destroyed arbitrarily.
 - **Strict Referential Integrity:** Financial ledgers and customer records prevent destructive deletion cascades (`ON DELETE RESTRICT`) to preserve forensic audit trails.
 - **Idempotency Enforcement:** Network retries and duplicate API submissions are deduplicated via unique idempotency keys at the database level.
-- **Regulatory & Privacy Safeguards:** Strict adherence to the Nigeria Data Protection Act 2023 (NDPA) and PCI-DSS best practices—storing only truncated card tokens (last four digits) and maintaining distinct, versioned KYC identity records.
+- **Regulatory & Privacy Safeguards:** Strict adherence to the Nigeria Data Protection Act 2023 (NDPA) and PCI-DSS best practicesâ€”storing only truncated card tokens (last four digits) and maintaining distinct, versioned KYC identity records.
 - **Exact Numeric Representation:** All monetary balances and transaction amounts use high-precision fixed-point numbers (`NUMERIC(19,4)`), eliminating floating-point IEEE 754 rounding inaccuracies.
 
 ---
@@ -132,49 +132,49 @@ In addition to standard ANSI SQL DDL, the complete relational schema is authored
 
 ### 3.1 `customers`
 Stores identity and status for individual users and merchants.
-* **`customer_id`**: `BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY` — Unique synthetic customer identifier.
-* **`first_name`**, **`last_name`**: `VARCHAR(100) NOT NULL` — Legal name.
-* **`email`**: `VARCHAR(255) NOT NULL UNIQUE` — Primary communication and authentication identifier.
-* **`phone`**: `VARCHAR(20) NOT NULL UNIQUE` — MSISDN telephone number.
-* **`customer_type`**: `VARCHAR(20) NOT NULL CHECK (customer_type IN ('INDIVIDUAL', 'MERCHANT'))` — Account classification.
-* **`status`**: `VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'SUSPENDED', 'CLOSED'))` — Operational status.
-* **`created_at`**: `TIMESTAMPTZ NOT NULL DEFAULT now()` — Account onboarding timestamp.
+* **`customer_id`**: `BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY` â€” Unique synthetic customer identifier.
+* **`first_name`**, **`last_name`**: `VARCHAR(100) NOT NULL` â€” Legal name.
+* **`email`**: `VARCHAR(255) NOT NULL UNIQUE` â€” Primary communication and authentication identifier.
+* **`phone`**: `VARCHAR(20) NOT NULL UNIQUE` â€” MSISDN telephone number.
+* **`customer_type`**: `VARCHAR(20) NOT NULL CHECK (customer_type IN ('INDIVIDUAL', 'MERCHANT'))` â€” Account classification.
+* **`status`**: `VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'SUSPENDED', 'CLOSED'))` â€” Operational status.
+* **`created_at`**: `TIMESTAMPTZ NOT NULL DEFAULT now()` â€” Account onboarding timestamp.
 
 ### 3.2 `kyc_records`
 Manages customer Know Your Customer (KYC) identity verification documents.
 * **`kyc_id`**: `BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY`.
-* **`customer_id`**: `BIGINT NOT NULL REFERENCES customers (customer_id) ON DELETE RESTRICT` — Ensures customer cannot be removed if KYC records exist.
-* **`id_type`**: `VARCHAR(30) NOT NULL CHECK (id_type IN ('NIN', 'BVN', 'PASSPORT', 'DRIVERS_LICENCE'))` — Government ID classification.
-* **`id_number`**: `VARCHAR(50) NOT NULL` — Official identification string.
+* **`customer_id`**: `BIGINT NOT NULL REFERENCES customers (customer_id) ON DELETE RESTRICT` â€” Ensures customer cannot be removed if KYC records exist.
+* **`id_type`**: `VARCHAR(30) NOT NULL CHECK (id_type IN ('NIN', 'BVN', 'PASSPORT', 'DRIVERS_LICENCE'))` â€” Government ID classification.
+* **`id_number`**: `VARCHAR(50) NOT NULL` â€” Official identification string.
 * **`verification_status`**: `VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (verification_status IN ('PENDING', 'VERIFIED', 'REJECTED'))`.
 * **`submitted_at`**: `TIMESTAMPTZ NOT NULL DEFAULT now()`.
 * **`verified_at`**: `TIMESTAMPTZ`.
-* **Integrity Constraint:** `CHECK (verified_at IS NULL OR verification_status <> 'PENDING')` — A record cannot have an approval timestamp while remaining pending.
+* **Integrity Constraint:** `CHECK (verified_at IS NULL OR verification_status <> 'PENDING')` â€” A record cannot have an approval timestamp while remaining pending.
 
 ### 3.3 `accounts`
 Represents Naira-denominated digital wallets.
 * **`account_id`**: `BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY`.
 * **`customer_id`**: `BIGINT NOT NULL REFERENCES customers (customer_id) ON DELETE RESTRICT`.
-* **`account_number`**: `CHAR(10) NOT NULL UNIQUE CHECK (account_number ~ '^[0-9]{10}$')` — Enforces exact 10-digit Nigerian Uniform Bank Account Number (NUBAN) structure.
-* **`currency`**: `CHAR(3) NOT NULL DEFAULT 'NGN'` — ISO-4217 currency code.
-* **`balance`**: `NUMERIC(19,4) NOT NULL DEFAULT 0 CHECK (balance >= 0)` — Cached balance with non-negative invariant.
+* **`account_number`**: `CHAR(10) NOT NULL UNIQUE CHECK (account_number ~ '^[0-9]{10}$')` â€” Enforces exact 10-digit Nigerian Uniform Bank Account Number (NUBAN) structure.
+* **`currency`**: `CHAR(3) NOT NULL DEFAULT 'NGN'` â€” ISO-4217 currency code.
+* **`balance`**: `NUMERIC(19,4) NOT NULL DEFAULT 0 CHECK (balance >= 0)` â€” Cached balance with non-negative invariant.
 * **`status`**: `VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'FROZEN', 'CLOSED'))`.
 * **`opened_at`**: `TIMESTAMPTZ NOT NULL DEFAULT now()`.
 
 ### 3.4 `beneficiaries`
 Frequent transfer recipients saved by customers for quick payment dispatch.
 * **`beneficiary_id`**: `BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY`.
-* **`customer_id`**: `BIGINT NOT NULL REFERENCES customers (customer_id) ON DELETE CASCADE` — Safe cascading deletion since beneficiary lists are convenience data.
+* **`customer_id`**: `BIGINT NOT NULL REFERENCES customers (customer_id) ON DELETE CASCADE` â€” Safe cascading deletion since beneficiary lists are convenience data.
 * **`bank_name`**: `VARCHAR(100) NOT NULL`.
 * **`account_number`**: `CHAR(10) NOT NULL CHECK (account_number ~ '^[0-9]{10}$')`.
 * **`account_name`**: `VARCHAR(150) NOT NULL`.
-* **Integrity Constraint:** `UNIQUE (customer_id, bank_name, account_number)` — Precludes duplicate entries for identical recipient destinations.
+* **Integrity Constraint:** `UNIQUE (customer_id, bank_name, account_number)` â€” Precludes duplicate entries for identical recipient destinations.
 
 ### 3.5 `cards`
 Debit and virtual card instruments mapped to wallets.
 * **`card_id`**: `BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY`.
 * **`account_id`**: `BIGINT NOT NULL REFERENCES accounts (account_id) ON DELETE RESTRICT`.
-* **`last_four`**: `CHAR(4) NOT NULL CHECK (last_four ~ '^[0-9]{4}$')` — PCI-DSS compliant tokenization; full Primary Account Number (PAN) is never persisted.
+* **`last_four`**: `CHAR(4) NOT NULL CHECK (last_four ~ '^[0-9]{4}$')` â€” PCI-DSS compliant tokenization; full Primary Account Number (PAN) is never persisted.
 * **`card_type`**: `VARCHAR(20) NOT NULL CHECK (card_type IN ('DEBIT', 'VIRTUAL'))`.
 * **`expiry_date`**: `DATE NOT NULL`.
 * **`status`**: `VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'BLOCKED', 'EXPIRED'))`.
@@ -182,13 +182,13 @@ Debit and virtual card instruments mapped to wallets.
 ### 3.6 `transactions`
 Business financial events with idempotency tracking and immutable reversal references.
 * **`transaction_id`**: `BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY`.
-* **`idempotency_key`**: `VARCHAR(64) NOT NULL UNIQUE` — Cryptographic or UUID token preventing duplicate execution of retried requests.
+* **`idempotency_key`**: `VARCHAR(64) NOT NULL UNIQUE` â€” Cryptographic or UUID token preventing duplicate execution of retried requests.
 * **`txn_type`**: `VARCHAR(20) NOT NULL CHECK (txn_type IN ('DEPOSIT', 'WITHDRAWAL', 'TRANSFER', 'BILL_PAYMENT', 'REVERSAL'))`.
 * **`status`**: `VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'COMPLETED', 'FAILED', 'REVERSED'))`.
-* **`amount`**: `NUMERIC(19,4) NOT NULL CHECK (amount > 0)` — Strictly positive magnitude.
-* **`reference`**: `VARCHAR(100)` — External payment gateway reference or memo.
-* **`reversal_of`**: `BIGINT REFERENCES transactions (transaction_id) ON DELETE RESTRICT` — Self-referential pointer.
-* **Integrity Constraint:** `CHECK ((txn_type = 'REVERSAL') = (reversal_of IS NOT NULL))` — Enforces that a transaction is a `REVERSAL` if and only if it links to an original transaction.
+* **`amount`**: `NUMERIC(19,4) NOT NULL CHECK (amount > 0)` â€” Strictly positive magnitude.
+* **`reference`**: `VARCHAR(100)` â€” External payment gateway reference or memo.
+* **`reversal_of`**: `BIGINT REFERENCES transactions (transaction_id) ON DELETE RESTRICT` â€” Self-referential pointer.
+* **Integrity Constraint:** `CHECK ((txn_type = 'REVERSAL') = (reversal_of IS NOT NULL))` â€” Enforces that a transaction is a `REVERSAL` if and only if it links to an original transaction.
 
 ### 3.7 `ledger_entries`
 Double-entry bookkeeping journal lines; resolves the Many-to-Many ($M:N$) relationship between `accounts` and `transactions`.
@@ -197,15 +197,15 @@ Double-entry bookkeeping journal lines; resolves the Many-to-Many ($M:N$) relati
 * **`account_id`**: `BIGINT NOT NULL REFERENCES accounts (account_id) ON DELETE RESTRICT`.
 * **`direction`**: `VARCHAR(6) NOT NULL CHECK (direction IN ('DEBIT', 'CREDIT'))`.
 * **`amount`**: `NUMERIC(19,4) NOT NULL CHECK (amount > 0)`.
-* **`balance_after`**: `NUMERIC(19,4) NOT NULL CHECK (balance_after >= 0)` — Snapshot balance following line application.
-* **Integrity Constraint:** `UNIQUE (transaction_id, account_id, direction)` — Restricts duplicate lines per account per movement.
+* **`balance_after`**: `NUMERIC(19,4) NOT NULL CHECK (balance_after >= 0)` â€” Snapshot balance following line application.
+* **Integrity Constraint:** `UNIQUE (transaction_id, account_id, direction)` â€” Restricts duplicate lines per account per movement.
 
 ### 3.8 `fraud_flags`
 Risk engine scoring and Anti-Money Laundering (AML) audit log.
 * **`flag_id`**: `BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY`.
 * **`transaction_id`**: `BIGINT NOT NULL REFERENCES transactions (transaction_id) ON DELETE RESTRICT`.
-* **`reason`**: `VARCHAR(200) NOT NULL` — Risk rationale (e.g., velocity anomaly, unusual geolocation).
-* **`risk_score`**: `SMALLINT NOT NULL CHECK (risk_score BETWEEN 0 AND 100)` — Normalized risk probability.
+* **`reason`**: `VARCHAR(200) NOT NULL` â€” Risk rationale (e.g., velocity anomaly, unusual geolocation).
+* **`risk_score`**: `SMALLINT NOT NULL CHECK (risk_score BETWEEN 0 AND 100)` â€” Normalized risk probability.
 * **`status`**: `VARCHAR(20) NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'UNDER_REVIEW', 'CLEARED', 'CONFIRMED'))`.
 * **`flagged_at`**: `TIMESTAMPTZ NOT NULL DEFAULT now()`.
 
@@ -317,7 +317,7 @@ The seed script constructs a complete digital banking ecosystem in a single tran
      ```
    - Synchronizes cached `accounts.balance` from the latest `balance_after` of each account.
 9. **Fraud Detection Engine:**
-   - Identifies high-value transfers ($\ge$ 4,950 NGN) and flags ~25% with risk scores (50–100), automated rationales (*"Unusually large transfer"*, *"Rapid repeated transfers"*), and lifecycle review states.
+   - Identifies high-value transfers ($\ge$ 4,950 NGN) and flags ~25% with risk scores (50â€“100), automated rationales (*"Unusually large transfer"*, *"Rapid repeated transfers"*), and lifecycle review states.
 10. **Query Optimizer Statistics:**
     - Executes `ANALYZE;` to ensure PostgreSQL's Cost-Based Optimizer (CBO) gathers fresh table distributions, row counts, and data selectivity histograms.
 
@@ -327,17 +327,17 @@ The seed script constructs a complete digital banking ecosystem in a single tran
 
 ```text
 portfolio-1-database-design/
-│
-├── README.md                 # Complete system documentation, ERD, and lab report
-├── Oluwarotimi_Oluwafemi_301930838_Normalisation.md          # In-depth normalisation & deliberate 3NF trade-off report
-├── Oluwarotimi_Oluwafemi_301930838_CarbonDBML.dbml               # Database Markup Language (DBML) interactive schema definition
-├── Oluwarotimi_Oluwafemi_301930838_00_CreateDatabase.sql    # DDL script creating target database (carbon_db)
-├── Oluwarotimi_Oluwafemi_301930838_01_VerifySetup.sql       # Verification script checking PostgreSQL engine version and connection
-├── Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql      # Core DDL defining all 8 normalized tables and relational constraints
-├── Oluwarotimi_Oluwafemi_301930838_03_ConstraintTests.sql   # Automated negative-testing validation suite (10 test cases)
-├── Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql          # Production-scale synthetic data generator (5,000 customers, 200k+ txns)
-└── screenshots/              # Visual proof of pgAdmin 4 deployment and query execution
-    └── Oluwarotimi_Oluwafemi_301930838_Screenshot06.png  # pgAdmin 4 PostgreSQL 18 connection dashboard
+â”‚
+â”œâ”€â”€ README.md                 # Complete system documentation, ERD, and lab report
+â”œâ”€â”€ Oluwarotimi_Oluwafemi_301930838_Normalisation.md          # In-depth normalisation & deliberate 3NF trade-off report
+â”œâ”€â”€ Oluwarotimi_Oluwafemi_301930838_CarbonDBML.dbml               # Database Markup Language (DBML) interactive schema definition
+â”œâ”€â”€ Oluwarotimi_Oluwafemi_301930838_00_CreateDatabase.sql    # DDL script creating target database (carbon_db)
+â”œâ”€â”€ Oluwarotimi_Oluwafemi_301930838_01_VerifySetup.sql       # Verification script checking PostgreSQL engine version and connection
+â”œâ”€â”€ Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql      # Core DDL defining all 8 normalized tables and relational constraints
+â”œâ”€â”€ Oluwarotimi_Oluwafemi_301930838_03_ConstraintTests.sql   # Automated negative-testing validation suite (10 test cases)
+â”œâ”€â”€ Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql          # Production-scale synthetic data generator (5,000 customers, 200k+ txns)
+â””â”€â”€ screenshots/              # Visual proof of pgAdmin 4 deployment and query execution
+    â””â”€â”€ Oluwarotimi_Oluwafemi_301930838_Screenshot06.png  # pgAdmin 4 PostgreSQL 18 connection dashboard
 ```
 
 ---
@@ -381,7 +381,7 @@ portfolio-1-database-design/
    ```bash
    psql -U postgres -d carbon_db -f Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql
    ```
-   *Execution time is typically 15–30 seconds.*
+   *Execution time is typically 15â€“30 seconds.*
 
 ---
 
@@ -391,7 +391,7 @@ After running [`Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql`](./Oluwarotimi_
 
 ### 10.1 Table Row Counts
 ```sql
-SELECT 
+SELECT
     'customers' AS relation, count(*) AS row_count FROM customers
 UNION ALL SELECT 'kyc_records', count(*) FROM kyc_records
 UNION ALL SELECT 'accounts', count(*) FROM accounts
@@ -405,10 +405,10 @@ UNION ALL SELECT 'fraud_flags', count(*) FROM fraud_flags;
 ### 10.2 Zero-Variance Double-Entry Reconciliation
 Verifies that cached `accounts.balance` matches the sum of historical ledger entries with zero divergence:
 ```sql
-SELECT 
+SELECT
     count(*) AS unaligned_accounts
 FROM (
-    SELECT 
+    SELECT
         a.account_id,
         a.balance AS cached_balance,
         COALESCE(SUM(CASE WHEN l.direction = 'CREDIT' THEN l.amount ELSE -l.amount END), 0) AS ledger_sum
@@ -427,31 +427,31 @@ FROM (
 The following screenshots document the step-by-step physical deployment and execution within **pgAdmin 4** on **PostgreSQL 18**:
 
 ### 11.1 PostgreSQL 18 Server Connection & Engine Health
-![PostgreSQL 18 Dashboard](screenshots/Oluwarotimi_Oluwafemi_301930838_Screenshot06.png)  
+![PostgreSQL 18 Dashboard](screenshots/Oluwarotimi_Oluwafemi_301930838_Screenshot06.png)
 *Figure 2: PostgreSQL 18 pgAdmin 4 dashboard verifying server connectivity, session pooling, and transaction throughput.*
 
 ---
 
 ### 11.2 Schema Table Creation & Commit (`Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql`)
-![Table Creation Commit](screenshots/Oluwarotimi_Oluwafemi_301930838_Screenshot08.png)  
+![Table Creation Commit](screenshots/Oluwarotimi_Oluwafemi_301930838_Screenshot08.png)
 *Figure 3: Execution of `Oluwarotimi_Oluwafemi_301930838_02_CreateTables.sql` successfully creating and committing all 8 normalized relations in 216ms.*
 
 ---
 
 ### 11.3 Constraint Testing Execution (`Oluwarotimi_Oluwafemi_301930838_03_ConstraintTests.sql`)
-![Constraint Tests](screenshots/Oluwarotimi_Oluwafemi_301930838_Screenshot09.png)  
+![Constraint Tests](screenshots/Oluwarotimi_Oluwafemi_301930838_Screenshot09.png)
 *Figure 4: Automated negative constraint test harness confirming PASS notices for domain/check/unique invariants and blocking restricted customer deletion.*
 
 ---
 
 ### 11.4 High-Volume Seed Data Execution (`Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql`)
-![Seed Data Execution](screenshots/Oluwarotimi_Oluwafemi_301930838_SeedData.png)  
+![Seed Data Execution](screenshots/Oluwarotimi_Oluwafemi_301930838_SeedData.png)
 *Figure 5: Execution of `Oluwarotimi_Oluwafemi_301930838_04_SeedData.sql` completing 200,000+ transfer simulations, window function balances, cascading resets, and `ANALYZE` in ~24.99 seconds.*
 
 ---
 
 ### 11.5 Populated Database & Balance Audit (`accounts` table)
-![Accounts Data Output](screenshots/Oluwarotimi_Oluwafemi_301930838_Screenshot10.png)  
+![Accounts Data Output](screenshots/Oluwarotimi_Oluwafemi_301930838_Screenshot10.png)
 *Figure 6: Data output grid verifying 6,001 active wallets, NUBAN account numbers, and synchronized multi-million Naira balances.*
 
 

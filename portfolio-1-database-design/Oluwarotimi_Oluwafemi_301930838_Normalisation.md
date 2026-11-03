@@ -1,18 +1,18 @@
 # Normalisation & Deliberate Denormalisation Report
 
-**Course:** MIT 8103 – Advanced Database Systems  
-**Institution:** Miva Open University — Master of Information Technology (MIT)  
-**Module:** Continuous Assessment (Virtual Lab Portfolio 1)  
-**Database:** Carbon / NairaPay Core Banking & Ledger System (`carbon_db`)  
-**Author:** Oluwafemi Emmanuel Oluwarotimi ([@Dumeloh](https://github.com/Dumeloh))  
+**Course:** MIT 8103 â€“ Advanced Database Systems
+**Institution:** Miva Open University â€” Master of Information Technology (MIT)
+**Module:** Continuous Assessment (Virtual Lab Portfolio 1)
+**Database:** Carbon (`carbon_db`)
+**Author:** Oluwafemi Emmanuel Oluwarotimi ([@Dumeloh](https://github.com/Dumeloh))
 
 ---
 
 ## 1. Introduction
 
-In relational database theory, normalisation is the formal process of organising schemas to minimise redundancy and eliminate insertion, update, and deletion anomalies while preserving data integrity. Edgar F. Codd’s normal forms—specifically **First (1NF)**, **Second (2NF)**, **Third (3NF)**, and **Boyce-Codd Normal Form (BCNF)**—provide strict mathematical guarantees regarding functional dependencies ($X \rightarrow Y$).
+In relational database theory, normalisation is the formal process of organising schemas to minimise redundancy and eliminate insertion, update, and deletion anomalies while preserving data integrity. Edgar F. Coddâ€™s normal formsâ€”specifically **First (1NF)**, **Second (2NF)**, **Third (3NF)**, and **Boyce-Codd Normal Form (BCNF)**â€”provide strict mathematical guarantees regarding functional dependencies ($X \rightarrow Y$).
 
-However, in production enterprise systems—particularly in high-throughput financial technology (fintech) and core banking platforms—**strict adherence to Third Normal Form (3NF) can create catastrophic performance bottlenecks, high-latency query overhead, and loss of point-in-time auditability**. 
+However, in production enterprise systemsâ€”particularly in high-throughput financial technology (fintech) and core banking platformsâ€”**strict adherence to Third Normal Form (3NF) can create catastrophic performance bottlenecks, high-latency query overhead, and loss of point-in-time auditability**.
 
 This document provides a rigorous theoretical evaluation of the `carbon_db` schema, analyzing its baseline normalisation compliance and formally explaining the **four deliberate 3NF violations** introduced into the physical design:
 1. `accounts.balance`
@@ -134,7 +134,7 @@ Because `balance_after` is derived from prior entries in the relation and the cu
 - **Cascade Corruption:** In a traditional editable relation, updating entry $i$ would require updating `balance_after` on all subsequent entries $i+1, i+2, \dots, n$.
 
 #### C. Engineering Rationale & Justification
-1. **Immutable Point-in-Time Forensic Auditability:** In financial accounting, **the ledger is strictly append-only**—rows are *never* updated or deleted. By storing `balance_after` on each immutable entry, the database preserves the exact financial state of the customer's wallet at that exact microsecond.
+1. **Immutable Point-in-Time Forensic Auditability:** In financial accounting, **the ledger is strictly append-only**â€”rows are *never* updated or deleted. By storing `balance_after` on each immutable entry, the database preserves the exact financial state of the customer's wallet at that exact microsecond.
 2. **Constant-Time Dispute & Statement Generation:** Generating a historical account statement (e.g., "What was the balance on March 15th at 14:02?") requires reading a single row (`balance_after`) instead of reconstructing historical state by aggregating all transactions from the inception of the account up to that timestamp.
 3. **Ledger Integrity Auditing:** Auditing algorithms can mathematically verify chain integrity in $O(N)$ sequential time simply by verifying that:
    $$\text{balance\_after}_k - \text{balance\_after}_{k-1} = \pm \text{amount}_k$$
@@ -235,7 +235,7 @@ When an engineering architecture intentionally relaxes 3NF, the risk of data div
 
    ```sql
    -- Periodic sanity audit query: verify zero drift between ledger and cached balance
-   SELECT 
+   SELECT
        a.account_id,
        a.account_number,
        a.balance AS cached_balance,

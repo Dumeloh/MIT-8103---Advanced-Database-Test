@@ -4,7 +4,7 @@
 -- 
 -- Candidate: Oluwafemi Emmanuel Oluwarotimi (Student ID: 301930838)
 -- Institution: Miva Open University — Master of Information Technology
--- Database: Carbon / NairaPay Core Fintech Ledger System (carbon_db)
+-- Database: Carbon (carbon_db)
 -- Engine: PostgreSQL 18 | Tool: pgAdmin 4
 -- File: Oluwarotimi_Oluwafemi_301930838_Optimisation_Indexes.sql
 -- =====================================================================

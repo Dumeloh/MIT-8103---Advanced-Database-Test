@@ -1,14 +1,14 @@
-# Case Study: CarbonPay — A Simulated Carbon Fintech Platform
+# Case Study: Carbon — A Simulated Carbon Fintech Platform
 
 Course: MIT 8103 – Advanced Database Systems
 
 Module: Portfolio 1 – Database Design and Modelling
 
-Target System: `carbonpay_db` | Database: PostgreSQL 16
+Target System: `carbon_db` | Database: PostgreSQL 18
 
-Since you have already created your PostgreSQL tables, this new case study will use your existing schema as its foundation. It follows the structure of your NairaPay reference case study, but adapts the business context, workflows, actors, security requirements, and database challenges to a simulated Carbon fintech platform.
+Since you have already created your PostgreSQL tables, this new case study will use your existing schema as its foundation. It follows the structure of the reference case study, but adapts the business context, workflows, actors, security requirements, and database challenges to a simulated Carbon fintech platform.
 
-Important: CarbonPay in this case study is a fictionalized learning scenario inspired by digital lending and financial services. It is not a description of Carbon's actual internal systems or database architecture.
+Important: Carbon in this case study is a fictionalized learning scenario inspired by digital lending and financial services. It is not a description of Carbon's actual internal systems or database architecture.
 
 ## 1. Executive Summary and Industry Context
 
@@ -26,9 +26,9 @@ The platform faces several important technical challenges:
 - Financial auditability: Every completed financial operation must have a traceable record. Reversals must preserve the original transaction history rather than erase it.
 - Data security and privacy: Customer identity, account details, and transaction histories require appropriate access controls and protection.
 
-### 1.2 Enterprise Profile: CarbonPay Financial Technologies
+### 1.2 Enterprise Profile: Carbon Financial Technologies
 
-CarbonPay Financial Technologies is a hypothetical Nigerian digital financial services platform offering:
+Carbon Financial Technologies is a hypothetical Nigerian digital financial services platform offering:
 
 - Digital naira wallets for individuals.
 - Merchant accounts for businesses.
@@ -42,15 +42,15 @@ CarbonPay Financial Technologies is a hypothetical Nigerian digital financial se
 
 The platform serves individuals, freelancers, and small businesses. Customers interact through a mobile application or web interface, while internal services process financial transactions and compliance checks.
 
-PostgreSQL 16 serves as the platform's primary relational database, responsible for enforcing data integrity, maintaining relationships between entities, and supporting transactional operations.
+PostgreSQL 18 serves as the platform's primary relational database, responsible for enforcing data integrity, maintaining relationships between entities, and supporting transactional operations.
 
 The central business objective is to provide secure, consistent, auditable, and reliable digital financial services, even when requests are retried, multiple operations occur simultaneously, or external payment services fail.
 
 ## 2. Regulatory, Compliance, and Security Framework
 
-CarbonPay operates in a simulated Nigerian financial services environment. Its database design should reflect relevant compliance and security considerations without assuming that a database schema alone guarantees regulatory compliance.
+Carbon operates in a simulated Nigerian financial services environment. Its database design should reflect relevant compliance and security considerations without assuming that a database schema alone guarantees regulatory compliance.
 
-| Requirement                    | Relevance to CarbonPay                                               | Existing schema implementation                      |
+| Requirement                    | Relevance to Carbon                                               | Existing schema implementation                      |
 | ------------------------------ | -------------------------------------------------------------------- | --------------------------------------------------- |
 | Customer identity verification | Establish customer identity before enabling applicable services      | `customers`, `kyc_records`                          |
 | Account number validation      | Maintain correctly formatted 10-digit account numbers in this model  | `accounts.account_number`                           |
@@ -67,7 +67,7 @@ Security limitation: Your current tables provide useful structural controls, but
 
 ## 3. Database Users and Actor Personas
 
-The `carbonpay_db` database supports several categories of users and system components. Each has different access requirements and responsibilities.
+The `carbon_db` database supports several categories of users and system components. Each has different access requirements and responsibilities.
 
 1\. Customers and Merchants
 
@@ -206,7 +206,7 @@ One important distinction: the current schema does not contain a separate reconc
 
 ### 5.1 Customer onboarding and KYC verification
 
-When a new customer joins CarbonPay, the platform must establish their identity and create the appropriate wallet account.
+When a new customer joins Carbon, the platform must establish their identity and create the appropriate wallet account.
 
 Step 1: Customer registration
 
@@ -391,7 +391,7 @@ These limitations are not reasons to discard your schema. They provide excellent
 
 ## 7. Mapping to the MIT 8103 Portfolio Roadmap
 
-Following the structure of your reference case study, CarbonPay can support a progressive five-portfolio database project.
+Following the structure of your reference case study, Carbon can support a progressive five-portfolio database project.
 
 ## 01
 
@@ -442,7 +442,7 @@ Portfolio 5 — Distributed and Cloud Architecture
 
 ## 8. Practical Assessment Tasks
 
-Use these tasks to demonstrate that your CarbonPay database is functional, not just created.
+Use these tasks to demonstrate that your Carbon database is functional, not just created.
 
 ## Your project checklist
 
@@ -493,4 +493,4 @@ I recommend following this sequence:
 
 One important point for your assessment: creating tables successfully demonstrates that the DDL executed, but it does not yet prove that the database meets every financial integrity requirement.
 
-Your existing schema is a good starting foundation for the CarbonPay case study. The strongest next deliverable would be a Portfolio 1 implementation and testing script that works directly with your eight existing PostgreSQL tables.
+Your existing schema is a good starting foundation for the Carbon case study. The strongest next deliverable would be a Portfolio 1 implementation and testing script that works directly with your eight existing PostgreSQL tables.

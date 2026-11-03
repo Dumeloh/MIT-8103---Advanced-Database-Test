@@ -1,19 +1,19 @@
 # Portfolio 2: Query Optimisation & Execution Plans
 
-**Course:** MIT 8103 – Advanced Database Systems  
-**Institution:** Miva Open University — Master of Information Technology (MIT)  
-**Candidate / Author:** Oluwafemi Emmanuel Oluwarotimi ([@Dumeloh](https://github.com/Dumeloh))  
-**Student ID:** 301930838  
-**System:** Carbon / NairaPay Core Fintech Ledger System (`carbon_db`)  
-**Database Engine:** PostgreSQL 18.0 (x64) | **Management Tool:** pgAdmin 4  
+**Course:** MIT 8103 â€“ Advanced Database Systems
+**Institution:** Miva Open University â€” Master of Information Technology (MIT)
+**Candidate / Author:** Oluwafemi Emmanuel Oluwarotimi ([@Dumeloh](https://github.com/Dumeloh))
+**Student ID:** 301930838
+**System:** Carbon (`carbon_db`)
+**Database Engine:** PostgreSQL 18.0 (x64) | **Management Tool:** pgAdmin 4
 
 ---
 
-## 📌 Directory Navigation
+## ðŸ“Œ Directory Navigation
 
-- 📄 **[Master Performance Analysis & Theoretical Report](./Oluwarotimi_Oluwafemi_301930838_Query_Optimisation_Analysis.md)**
-- 💾 **[Production Optimization Indexes DDL Script](./sql/Oluwarotimi_Oluwafemi_301930838_Optimisation_Indexes.sql)**
-- 📁 **[SQL Query Benchmark Suite](./queries/)**
+- ðŸ“„ **[Master Performance Analysis & Theoretical Report](./Oluwarotimi_Oluwafemi_301930838_Query_Optimisation_Analysis.md)**
+- ðŸ’¾ **[Production Optimization Indexes DDL Script](./sql/Oluwarotimi_Oluwafemi_301930838_Optimisation_Indexes.sql)**
+- ðŸ“ **[SQL Query Benchmark Suite](./queries/)**
   - [Q1: Account Statement (Recent Ledger Lines)](./queries/q01_account_statement.sql)
   - [Q2: Daily Transfer Totals (Trailing 30 Days)](./queries/q02_daily_transfer_totals.sql)
   - [Q3: Customer Largest Outgoing Transfers](./queries/q03_customer_largest_transfers.sql)
@@ -23,11 +23,11 @@
   - [Q7: Unbalanced Journals Audit (Core Accounting Invariant)](./queries/q07_unbalanced_journals.sql)
   - [Q8: Net Movement & Reversal-Aware Treasury Totals](./queries/q08_net_movement_reversals.sql)
   - [Q9: Join Fan-Out Trap Analysis (Relational Correctness)](./queries/q09_join_fanout_trap.sql)
-- 🖼️ **[pgAdmin 4 Execution Plan & Results Screenshots](./screenshots/)**
+- ðŸ–¼ï¸ **[pgAdmin 4 Execution Plan & Results Screenshots](./screenshots/)**
 
 ---
 
-## 📊 Summary Benchmark Matrix
+## ðŸ“Š Summary Benchmark Matrix
 
 | Query ID | Description / Use Case | Baseline Access Path | Baseline Latency | Optimized Access Path | Projected Latency | Speedup Factor | Primary Optimization Applied |
 | :---: | :--- | :--- | :---: | :--- | :---: | :---: | :--- |

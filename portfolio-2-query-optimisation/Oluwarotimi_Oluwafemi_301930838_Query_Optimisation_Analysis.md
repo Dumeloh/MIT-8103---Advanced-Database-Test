@@ -1,18 +1,18 @@
 # Portfolio 2: Query Optimisation, Execution Plan Analysis & Indexing Strategies
 
-**Course:** MIT 8103 – Advanced Database Systems  
-**Institution:** Miva Open University — Master of Information Technology (MIT)  
-**Assessment Mode:** Continuous Assessment (Virtual Lab Portfolio 2)  
-**Target Database:** Carbon / NairaPay Core Fintech Ledger System (`carbon_db`)  
-**Database Engine:** PostgreSQL 18.0 (x64) | **Management Tool:** pgAdmin 4  
-**Author / Candidate:** Oluwafemi Emmanuel Oluwarotimi ([@Dumeloh](https://github.com/Dumeloh))  
-**Student ID:** 301930838  
+**Course:** MIT 8103 â€“ Advanced Database Systems
+**Institution:** Miva Open University â€” Master of Information Technology (MIT)
+**Assessment Mode:** Continuous Assessment (Virtual Lab Portfolio 2)
+**Target Database:** Carbon (`carbon_db`)
+**Database Engine:** PostgreSQL 18.0 (x64) | **Management Tool:** pgAdmin 4
+**Author / Candidate:** Oluwafemi Emmanuel Oluwarotimi ([@Dumeloh](https://github.com/Dumeloh))
+**Student ID:** 301930838
 
 ---
 
 ## 1. Executive Summary
 
-In high-throughput financial technology platforms, sub-second query performance and absolute data integrity are fundamental operational imperatives. While **Portfolio 1** established the declarative relational architecture, normalization guarantees, and double-entry bookkeeping invariants for `carbon_db`, **Portfolio 2** examines the physical query execution layer. 
+In high-throughput financial technology platforms, sub-second query performance and absolute data integrity are fundamental operational imperatives. While **Portfolio 1** established the declarative relational architecture, normalization guarantees, and double-entry bookkeeping invariants for `carbon_db`, **Portfolio 2** examines the physical query execution layer.
 
 As transaction volumes scale from thousands to millions of entries, unindexed relational operations deteriorate exponentially from logarithmic $O(\log N)$ or constant $O(1)$ lookups into catastrophic $O(N)$ sequential table scans, memory-intensive sorts, and unbounded hash joins.
 
@@ -21,7 +21,7 @@ This report delivers a rigorous, empirical performance analysis of nine (9) repr
 ### Key Investigation Highlights
 - **Access Path Analysis:** Contrast between disk-bound `Seq Scan` operations and memory-efficient `Index Scan` / `Index-Only Scan` access paths.
 - **The Negative Control Benchmark (Q5):** Empirical validation that declarative database constraints (`UNIQUE`, `PRIMARY KEY`) automatically create underlying B-Tree indexes, whereas `FOREIGN KEY` references do not.
-- **The Join Fan-Out Trap (Q9):** Mathematical proof and execution analysis of the classic $1:N$ join aggregation bug, wherein naive joins between transaction headers and double-entry ledger legs result in an exact $2.0\times$ volume inflation ($₦79,117,587.72$ vs $₦39,558,793.86$).
+- **The Join Fan-Out Trap (Q9):** Mathematical proof and execution analysis of the classic $1:N$ join aggregation bug, wherein naive joins between transaction headers and double-entry ledger legs result in an exact $2.0\times$ volume inflation ($â‚¦79,117,587.72$ vs $â‚¦39,558,793.86$).
 - **Sort Elimination & Distinct Optimization (Q6):** Resolving high-latency `DISTINCT ON` sorts via composite index prefix ordering `(account_id, created_at DESC, entry_id DESC)`, slashing latency by over **96%**.
 - **Index Architecture:** Formulation of a production-grade indexing strategy incorporating composite B-Trees, partial/filtered indexes, and covering indexes with `INCLUDE` clauses, balanced against write amplification and WAL overhead.
 
@@ -71,7 +71,7 @@ The evaluation suite tests nine distinct queries reflecting real-world fintech w
 
 ## 4. PostgreSQL Query Optimizer & Cost Model Fundamentals
 
-PostgreSQL employs a Cost-Based Optimizer (CBO) to convert relational algebra expressions into the most efficient physical execution plan. 
+PostgreSQL employs a Cost-Based Optimizer (CBO) to convert relational algebra expressions into the most efficient physical execution plan.
 
 ```mermaid
 flowchart TD
@@ -79,13 +79,13 @@ flowchart TD
     Parser --> AST["Abstract Syntax Tree (AST)"]
     AST --> Rewriter["Rule System / Query Rewriter"]
     Rewriter --> Optimizer["Cost-Based Optimizer (CBO)"]
-    
+
     subgraph "Cost-Based Optimizer Decisions"
         Optimizer --> PathGen["Access Path Generation<br>(Seq Scan vs Index Scan)"]
         Optimizer --> JoinGen["Join Ordering & Algorithm<br>(Nested Loop, Hash, Merge)"]
         Optimizer --> CostCalc["Cost Estimation<br>(CPU + I/O Disk Pages)"]
     end
-    
+
     CostCalc --> PlanSelect["Select Minimum Cost Plan"]
     PlanSelect --> Executor["Execution Engine"]
     Executor --> Result["Data Output & Buffer Cache Hits"]
@@ -94,7 +94,7 @@ flowchart TD
 ### 4.1 Access Path Selection
 1. **Sequential Scan (`Seq Scan`):** Reads every disk page of the relation sequentially into PostgreSQL's shared buffer pool. Cost formula:
    $$\text{Cost} = (\text{Pages} \times \text{seq\_page\_cost}) + (\text{Tuples} \times \text{cpu\_tuple\_cost})$$
-   Optimal for fetching $> 15\text{–}20\%$ of a table, but disastrous for point lookups on large tables.
+   Optimal for fetching $> 15\text{â€“}20\%$ of a table, but disastrous for point lookups on large tables.
 2. **Index Scan (`Index Scan`):** Navigates the B-Tree root, internal, and leaf nodes ($O(\log N)$) to locate matching Tuple Identifiers (TIDs `(block_number, offset)`), then fetches heap pages randomly.
 3. **Index-Only Scan (`Index Only Scan`):** Occurs when all projected and filtered attributes are contained directly within the B-Tree leaf pages (or `INCLUDE` clauses) and the table visibility map confirms pages are all-visible. Completely bypasses table heap access ($0$ random heap I/O).
 4. **Bitmap Index Scan:** For intermediate selectivity, collects qualifying TIDs into an in-memory bitmask ordered by physical disk block, converting random I/O into sequential disk chunk reads.
@@ -169,7 +169,7 @@ ORDER BY 1;
 ![Q2 Daily Transfer Totals Execution](screenshots/Oluwarotimi_Oluwafemi_301930838_daily%20transfer.png.png)
 *Figure 2: Execution of Q2 in pgAdmin 4. Execution time: 239 ms, yielding 29 daily aggregate rows.*
 
-- **Rows Returned:** 29 daily summary rows (~500–600 transfers/day, ~₦1.3M–₦1.5M/day)
+- **Rows Returned:** 29 daily summary rows (~500â€“600 transfers/day, ~â‚¦1.3Mâ€“â‚¦1.5M/day)
 - **Observed Execution Time:** **`239 ms`** (00:00:00.239)
 
 #### Execution Plan Mechanics & Bottleneck
@@ -242,7 +242,7 @@ INCLUDE (transaction_id);
 ### 5.4 Query 4: Large Transfer Fraud Pattern (Compliance Review)
 
 #### Business Context
-Nigerian AML and anti-fraud compliance mandates require financial institutions to monitor customers initiating unusually frequent large transactions. Q4 identifies customers with the highest count of large outgoing transfers ($₦4,000$ or higher) over the preceding 90 days.
+Nigerian AML and anti-fraud compliance mandates require financial institutions to monitor customers initiating unusually frequent large transactions. Q4 identifies customers with the highest count of large outgoing transfers ($â‚¦4,000$ or higher) over the preceding 90 days.
 
 #### SQL Implementation ([q04_large_transfer_fraud.sql](file:///c:/Users/FEMI%20EMMANUEL/Documents/MIT%208103%20Project/MIT-8103---Advanced-Database-Test/portfolio-2-query-optimisation/queries/q04_large_transfer_fraud.sql))
 ```sql
@@ -263,7 +263,7 @@ LIMIT 10;
 ![Q4 Large Transfer Fraud Execution](screenshots/Oluwarotimi_Oluwafemi_large_transfer_fraud.sql.png.png)
 *Figure 4: Execution of Q4 in pgAdmin 4. Execution time: 237 ms, returning top 10 high-velocity large transactors.*
 
-- **Rows Returned:** 10 (Leader: Customer 1390 with 12 transfers totaling ₦52,968.29)
+- **Rows Returned:** 10 (Leader: Customer 1390 with 12 transfers totaling â‚¦52,968.29)
 - **Observed Execution Time:** **`237 ms`** (00:00:00.237)
 
 #### Execution Plan Mechanics & Bottleneck
@@ -449,9 +449,9 @@ WHERE txn_type = 'TRANSFER'
 
 - **Empirical Output:**
   - `net_transfers`: **`47,940`**
-  - `net_amount`: **`₦122,489,499.5200`** (~$122.5\text{ Million NGN}$)
+  - `net_amount`: **`â‚¦122,489,499.5200`** (~$122.5\text{ Million NGN}$)
   - `reversed_transfers`: **`26`**
-  - `reversed_amount`: **`₦70,832.0500`** (~$70.8\text{ Thousand NGN}$)
+  - `reversed_amount`: **`â‚¦70,832.0500`** (~$70.8\text{ Thousand NGN}$)
   - `failed_transfers`: **`985`**
 - **Observed Execution Time:** **`280 ms`** (00:00:00.280)
 
@@ -496,8 +496,8 @@ SELECT
 *Figure 9: Execution of Q9 in pgAdmin 4. Execution time: 323 ms. Proves exact 2x fan-out discrepancy.*
 
 - **Empirical Output:**
-  - `fan_out_total`: **`₦79,117,587.7200`**
-  - `correct_total`: **`₦39,558,793.8600`**
+  - `fan_out_total`: **`â‚¦79,117,587.7200`**
+  - `correct_total`: **`â‚¦39,558,793.8600`**
 - **Observed Execution Time:** **`323 ms`** (00:00:00.323)
 
 #### Mathematical and Relational Algebra Proof
@@ -505,13 +505,13 @@ Let $T = \{t_1, t_2, \dots, t_N\}$ represent the set of completed transfer trans
 Let $L(t_i) = \{l_{i,1}, l_{i,2}\}$ represent the set of double-entry ledger entries associated with transaction $t_i$, where $|L(t_i)| = 2$ (one debit, one credit).
 
 When evaluating `correct_total`:
-$$\text{Correct Total} = \sum_{i=1}^N \text{amount}(t_i) = ₦39,558,793.8600$$
+$$\text{Correct Total} = \sum_{i=1}^N \text{amount}(t_i) = â‚¦39,558,793.8600$$
 
 When evaluating `fan_out_total` via the inner join $T \bowtie_{T.\text{id} = L.\text{id}} L$:
 $$\text{Relation Cardinality} = \sum_{i=1}^N |L(t_i)| = \sum_{i=1}^N 2 = 2N$$
 
 Computing $\sum t.\text{amount}$ over the joined relation:
-$$\text{Fan-Out Total} = \sum_{i=1}^N \sum_{j=1}^2 \text{amount}(t_i) = 2 \times \sum_{i=1}^N \text{amount}(t_i) = 2 \times ₦39,558,793.8600 = ₦79,117,587.7200$$
+$$\text{Fan-Out Total} = \sum_{i=1}^N \sum_{j=1}^2 \text{amount}(t_i) = 2 \times \sum_{i=1}^N \text{amount}(t_i) = 2 \times â‚¦39,558,793.8600 = â‚¦79,117,587.7200$$
 
 $$\text{Discrepancy Ratio} = \frac{79,117,587.7200}{39,558,793.8600} \equiv \mathbf{2.00000000}$$
 
@@ -561,7 +561,7 @@ graph TD
 While indexes dramatically accelerate `SELECT` performance, they introduce write overhead during `INSERT`, `UPDATE`, and `DELETE` operations. In a high-velocity core ledger:
 1. **Append-Only Immutability:** Financial ledger entries are strictly immutable (append-only). Because `ledger_entries` rows are never updated in-place, the database is immune to traditional index degradation caused by non-HOT (Heap-Only Tuples) updates.
 2. **Write Amplification Mitigation:**
-   - **Partial Indexes:** Rather than indexing all 100k+ rows, partial indexes (e.g. `idx_ledger_entries_large_debits`) only index $< 5\%$ of tuples. When a normal transfer occurs ($₦500$), the partial index is untouched, generating **zero index write amplification**.
+   - **Partial Indexes:** Rather than indexing all 100k+ rows, partial indexes (e.g. `idx_ledger_entries_large_debits`) only index $< 5\%$ of tuples. When a normal transfer occurs ($â‚¦500$), the partial index is untouched, generating **zero index write amplification**.
    - **Selective Indexing:** Indexes are restricted to columns actively supporting critical read paths and foreign-key integrity cascades.
 
 ---
@@ -577,4 +577,4 @@ The investigation conducted in Portfolio 2 yields critical insights into advance
 
 ---
 
-*Submission artifact for MIT 8103: Advanced Database Systems — Continuous Assessment Portfolio 2.*
+*Submission artifact for MIT 8103: Advanced Database Systems â€” Continuous Assessment Portfolio 2.*
