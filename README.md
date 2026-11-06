@@ -22,7 +22,7 @@ This repository hosts the practical virtual lab submissions and continuous asses
 | **Portfolio 2** | **Query Optimization & Execution Plans** | [`portfolio-2-query-optimisation/`](./portfolio-2-query-optimisation/) | ✅ Completed |
 | **Portfolio 3** | **Transactions & Concurrency Control** (ACID, Isolation Levels, Locking) | [`portfolio-3-transactions-concurrency/`](./portfolio-3-transactions-concurrency/) | ✅ Completed |
 | **Portfolio 4** | **NoSQL & Non-Relational Paradigms** (Document, Key-Value, Columnar, Graph) | [`portfolio-4-nosql/`](./portfolio-4-nosql/) | ✅ Completed |
-| **Portfolio 5** | **Distributed, Cloud & Modern Database Architectures** (Partitioning, Replication, CAP) | [`portfolio-5-distributed-cloud/`](./portfolio-5-distributed-cloud/) | ⏳ Upcoming |
+| **Portfolio 5** | **Distributed, Cloud & Modern Database Architectures** (Partitioning, Replication, CAP) | [`portfolio-5-distributed-cloud/`](./portfolio-5-distributed-cloud/) | ✅ Completed |
 
 ---
 
